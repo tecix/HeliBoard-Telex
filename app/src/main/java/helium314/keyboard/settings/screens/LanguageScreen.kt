@@ -125,7 +125,7 @@ private fun SubtypeRow(subtype: InputMethodSubtype, isEnabled: Boolean) {
 }
 
 private fun dictsAvailable(locale: Locale, context: Context): Boolean {
-    if (locale.language == SubtypeLocaleUtils.NO_LANGUAGE) return true // incorrect, but we don't want to show the dialog for "no language"
+    if (locale.language == SubtypeLocaleUtils.NO_LANGUAGE || locale.language == "vi") return true // incorrect, but we don't want to show the dialog for "no language" or Vietnamese (uses bundled vnlexicon.bin)
     val (dicts, hasInternal) = getUserAndInternalDictionaries(context, locale)
     return hasInternal || dicts.isNotEmpty()
 }

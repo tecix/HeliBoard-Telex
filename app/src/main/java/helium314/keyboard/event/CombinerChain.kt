@@ -43,6 +43,15 @@ class CombinerChain(initialText: String, combiningSpec: String) {
             mCombiners.add(HangulCombiner())
         else if (combiningSpec == "bn_khipro")
             mCombiners.add(BnKhiproCombiner())
+        else if (combiningSpec == "viet_telex")
+            mCombiners.add(VietTelexCombiner())
+    }
+
+    val vietTelexCombiner: VietTelexCombiner?
+        get() = mCombiners.firstOrNull { it is VietTelexCombiner } as? VietTelexCombiner
+
+    fun refreshStateFeedback() {
+        updateStateFeedback()
     }
 
     fun reset() {

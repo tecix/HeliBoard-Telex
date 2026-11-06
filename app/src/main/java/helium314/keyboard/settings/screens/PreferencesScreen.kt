@@ -83,6 +83,14 @@ fun PreferencesScreen(
         if (clipboardHistoryEnabled) Settings.PREF_CLIPBOARD_USE_FILES else null,
         if (clipboardHistoryEnabled && prefs.getBoolean(Settings.PREF_CLIPBOARD_USE_FILES, Defaults.PREF_CLIPBOARD_USE_FILES))
             Settings.PREF_CLIPBOARD_FILES_SIZE_LIMIT else null,
+        R.string.settings_category_vietnamese_telex,
+        Settings.PREF_VN_FREE_MARKING,
+        Settings.PREF_VN_SIMPLE_TELEX,
+        Settings.PREF_VN_CONTEXTUAL_ENGLISH,
+        Settings.PREF_VN_AUTO_FIX_ADJACENT,
+        Settings.PREF_VN_AUTO_RESTORE,
+        Settings.PREF_VN_LIVE_SPELL_CHECK,
+        Settings.PREF_VN_RE_EDIT_WORDS,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,

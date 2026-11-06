@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 
 import helium314.keyboard.event.CombinerChain;
 import helium314.keyboard.event.Event;
+import helium314.keyboard.event.VietTelexCombiner;
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode;
 import helium314.keyboard.latin.common.ComposedData;
 import helium314.keyboard.latin.common.CoordinateUtils;
@@ -17,6 +18,8 @@ import helium314.keyboard.latin.common.InputPointers;
 import helium314.keyboard.latin.common.StringUtils;
 import helium314.keyboard.latin.define.DebugFlags;
 import helium314.keyboard.latin.define.DecoderSpecificConstants;
+import helium314.keyboard.latin.settings.Settings;
+import helium314.keyboard.latin.settings.SettingsValues;
 import helium314.keyboard.latin.suggestions.SuggestedWordInfo;
 
 import java.util.ArrayList;
@@ -47,6 +50,7 @@ public final class WordComposer {
 
     // Cache these values for performance
     private CharSequence mTypedWordCache;
+    private String mVietTelexRawKeystrokes;
     private int mCapsCount;
     private int mDigitsCount;
     private CapsMode mCapitalizedMode;
@@ -88,6 +92,8 @@ public final class WordComposer {
         mIsBatchMode = other.mIsBatchMode;
         mRejectedBatchModeSuggestion = other.mRejectedBatchModeSuggestion;
         mTypedWordCache = other.mTypedWordCache;
+        mVietTelexRawKeystrokes = other.mVietTelexRawKeystrokes;
+        mCombiningSpec = other.mCombiningSpec;
         mCapsCount = other.mCapsCount;
         mDigitsCount = other.mDigitsCount;
         mCapitalizedMode = other.mCapitalizedMode;
@@ -132,6 +138,8 @@ public final class WordComposer {
     private void refreshTypedWordCache() {
         int oldSize = mCodePointSize;
         mTypedWordCache = mCombinerChain.getComposingWordWithCombiningFeedback();
+        final VietTelexCombiner vt = mCombinerChain.getVietTelexCombiner();
+        mVietTelexRawKeystrokes = vt != null ? vt.getRawKeystrokes() : null;
         mCodePointSize = Character.codePointCount(mTypedWordCache, 0, mTypedWordCache.length());
         mCursorPositionWithinWord += mCodePointSize - oldSize;
         // should not be necessary after setting mCursorPositionWithinWord at the end of reset, but still better not crash
@@ -225,6 +233,10 @@ public final class WordComposer {
 
     public void setCursorPositionWithinWord(final int posWithinWord) {
         mCursorPositionWithinWord = posWithinWord;
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt != null) {
+            vt.setCursorAtWordEnd(posWithinWord == mCodePointSize);
+        }
         // TODO: compute where that puts us inside the events
     }
 
@@ -288,6 +300,14 @@ public final class WordComposer {
     public void setBatchInputWord(final String word) {
         reset();
         mIsBatchMode = true;
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt != null) {
+            vt.resumeWord(word, Settings.getValues());
+            mCombinerChain.refreshStateFeedback();
+            refreshTypedWordCache();
+            mCursorPositionWithinWord = mCodePointSize;
+            return;
+        }
         final int length = word.length();
         for (int i = 0; i < length; i = Character.offsetByCodePoints(word, i, 1)) {
             final int codePoint = Character.codePointAt(word, i);
@@ -307,6 +327,31 @@ public final class WordComposer {
     public void setComposingWord(final int[] codePoints, final int[] coordinates) {
         reset();
         final int length = codePoints.length;
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt != null) {
+            final String word = StringUtils.getStringFromCodePoints(codePoints);
+            vt.resumeWord(word, Settings.getValues());
+            mCombinerChain.refreshStateFeedback();
+            refreshTypedWordCache();
+            mCursorPositionWithinWord = mCodePointSize;
+            for (int i = 0; i < length; ++i) {
+                if (i < MAX_WORD_LENGTH) {
+                    mInputPointers.addPointerAt(i,
+                        CoordinateUtils.xFromArray(coordinates, i),
+                        CoordinateUtils.yFromArray(coordinates, i), 0, 0);
+                }
+                if (0 == i) {
+                    mIsOnlyFirstCharCapitalized = Character.isUpperCase(codePoints[i]);
+                } else {
+                    mIsOnlyFirstCharCapitalized = mIsOnlyFirstCharCapitalized
+                        && !Character.isUpperCase(codePoints[i]);
+                }
+                if (Character.isUpperCase(codePoints[i])) mCapsCount++;
+                if (Character.isDigit(codePoints[i])) mDigitsCount++;
+            }
+            mIsResumed = true;
+            return;
+        }
         for (int i = 0; i < length; ++i) {
             final Event processedEvent =
                     processEvent(Event.createEventForCodePointFromAlreadyTypedText(codePoints[i],
@@ -316,6 +361,76 @@ public final class WordComposer {
             applyProcessedEvent(processedEvent);
         }
         mIsResumed = true;
+    }
+
+    public String getVietTelexRawKeystrokes() {
+        return mVietTelexRawKeystrokes;
+    }
+
+    public boolean hasVietTelexCombiner() {
+        return "viet_telex".equals(mCombiningSpec)
+                || (mCombinerChain != null && mCombinerChain.getVietTelexCombiner() != null);
+    }
+
+    public void finishVietTelexBoundary(final SettingsValues settingsValues) {
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt != null && isComposingWord() && !isBatchMode()) {
+            vt.commitBoundary(settingsValues);
+            mCombinerChain.refreshStateFeedback();
+            refreshTypedWordCache();
+            mCursorPositionWithinWord = mCodePointSize;
+            mAutoCorrection = null;
+        }
+    }
+
+    public void noteVietTelexBoundaryCharacter(final char ch, final SettingsValues settingsValues,
+            final RichInputConnection connection) {
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt != null) {
+            vt.noteBoundaryCharacter(ch, settingsValues, connection);
+        }
+    }
+
+    public void resetVietTelexContext() {
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt != null) {
+            vt.resetContext();
+            mCombinerChain.refreshStateFeedback();
+            refreshTypedWordCache();
+        }
+    }
+
+    public boolean canSeedVietTelexWord(final String word, final char ch, final SettingsValues settingsValues) {
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        return vt != null && vt.canSeedAndTransform(word, ch, settingsValues);
+    }
+
+    public boolean seedVietTelexWord(final String word, final SettingsValues settingsValues) {
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt == null) return false;
+        reset();
+        if (!vt.seedForTransform(word, settingsValues)) return false;
+        mCombinerChain.refreshStateFeedback();
+        refreshTypedWordCache();
+        mCursorPositionWithinWord = mCodePointSize;
+        mIsResumed = true;
+        return true;
+    }
+
+    public String reopenVietTelexLastCommit(final String beforeAfterDelete, final SettingsValues settingsValues) {
+        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
+        if (vt == null || settingsValues == null || !settingsValues.mVnReEditWords) return null;
+        if (!vt.getEngine().getCanReopenLastCommit()) return null;
+        final String reopened = vt.getEngine().reopenLastCommit();
+        if (reopened == null || beforeAfterDelete == null || !beforeAfterDelete.endsWith(reopened)) {
+            vt.getEngine().reset();
+            return null;
+        }
+        mCombinerChain.refreshStateFeedback();
+        refreshTypedWordCache();
+        mCursorPositionWithinWord = mCodePointSize;
+        mIsResumed = true;
+        return reopened;
     }
 
     /**

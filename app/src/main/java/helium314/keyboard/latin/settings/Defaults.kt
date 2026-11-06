@@ -201,4 +201,11 @@ object Defaults {
     const val PREF_SAVE_SUBTYPE_PER_APP = false
     const val PREF_SPELLCHECK_SUGGEST = true
     const val PREF_SHOW_ONLY_TOOLBAR_WITH_HARDWARE_KEYBOARD = false
+    const val PREF_VN_FREE_MARKING = true
+    const val PREF_VN_SIMPLE_TELEX = true
+    const val PREF_VN_CONTEXTUAL_ENGLISH = true
+    const val PREF_VN_AUTO_FIX_ADJACENT = true
+    const val PREF_VN_AUTO_RESTORE = true
+    const val PREF_VN_LIVE_SPELL_CHECK = true
+    const val PREF_VN_RE_EDIT_WORDS = true
 }

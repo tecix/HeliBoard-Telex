@@ -1176,7 +1176,7 @@
         android:imeSubtypeLocale="vi"
         android:languageTag="vi"
         android:imeSubtypeMode="keyboard"
-        android:imeSubtypeExtraValue="AsciiCapable,EmojiCapable"
+        android:imeSubtypeExtraValue="AsciiCapable,EmojiCapable,CombiningRules=viet_telex"
         android:isAsciiCapable="true"
     />
     <subtype android:icon="@drawable/ic_ime_switcher"

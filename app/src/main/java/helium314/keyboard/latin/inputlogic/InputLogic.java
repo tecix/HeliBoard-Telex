@@ -167,7 +167,12 @@ public final class InputLogic {
             // The timestamp at which it is captured is not accurate but close enough.
             StatsUtils.onWordCommitUserTyped(mWordComposer.getTypedWord(), mWordComposer.isBatchMode());
         }
+        if ((combiningSpec == null || combiningSpec.isEmpty())
+                && settingsValues != null && "vi".equals(settingsValues.mLocale.getLanguage())) {
+            combiningSpec = "viet_telex";
+        }
         mWordComposer.restartCombining(combiningSpec);
+        mWordComposer.resetVietTelexContext();
         resetComposingState(true /* alsoResetLastComposedWord */);
         mDeleteCount = 0;
         mSpaceState = SpaceState.NONE;
@@ -484,6 +489,35 @@ public final class InputLogic {
         if (GestureDataGatheringKt.useBackgroundGathering && mWordComposer.isComposingWord() && mWordComposer.isCursorFrontOrMiddleOfComposingWord())
             BackgroundGatheringCache.INSTANCE.onEditWord(mWordComposer.getTypedWord());
 
+        mConnection.beginBatchEdit();
+        if (mWordComposer.hasVietTelexCombiner()) {
+            if (SpaceState.PHANTOM == mSpaceState && mWordComposer.isComposingWord()
+                    && !event.isFunctionalKeyEvent() && event.getCodePoint() >= 0
+                    && !settingsValues.isWordSeparator(event.getCodePoint())) {
+                if (mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
+                    unlearnWord(mWordComposer.getTypedWord(), settingsValues, DictionaryFacilitator.UnlearnEvent.BACKSPACE);
+                    resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), true);
+                } else {
+                    commitTyped(settingsValues, LastComposedWord.NOT_A_SEPARATOR);
+                }
+            } else if (!mWordComposer.isComposingWord() && settingsValues.mVnReEditWords
+                    && !event.isFunctionalKeyEvent() && event.getCodePoint() > 0 && event.getCodePoint() < 128
+                    && !mConnection.hasSelection()) {
+                final char ch = (char) event.getCodePoint();
+                if (com.viettelex.keyboard.ReEdit.INSTANCE.isTransformKey(ch, false)) {
+                    final CharSequence before = mConnection.getTextBeforeCursor(64, 0);
+                    final CharSequence after = mConnection.getTextAfterCursor(2, 0);
+                    if (before != null && com.viettelex.keyboard.ReEdit.INSTANCE.atWordEnd(after != null ? after.toString() : "")) {
+                        final String trailing = com.viettelex.keyboard.ReEdit.INSTANCE.trailingWord(before.toString());
+                        if (trailing != null && mWordComposer.canSeedVietTelexWord(trailing, ch, settingsValues)) {
+                            mConnection.deleteTextBeforeCursor(trailing.length());
+                            mWordComposer.seedVietTelexWord(trailing, settingsValues);
+                        }
+                    }
+                }
+            }
+        }
+
         Event processedEvent = mWordComposer.processEvent(event);
         InputTransaction inputTransaction = new InputTransaction(settingsValues,
                 processedEvent, SystemClock.uptimeMillis(), mSpaceState,
@@ -493,7 +527,6 @@ public final class InputLogic {
             mDeleteCount = 0;
         }
         mLastKeyTime = inputTransaction.getTimestamp();
-        mConnection.beginBatchEdit();
         if (!mWordComposer.isComposingWord()) {
             // TODO: is this useful? It doesn't look like it should be done here, but rather after
             // a word is committed.
@@ -665,20 +698,34 @@ public final class InputLogic {
             inputTransaction.setDidAffectContents();
         }
         if (mWordComposer.isComposingWord()) {
-            // Khipro auto-space after suggestion: when user picks a suggestion and starts composing the next word,
+            // Khipro / VietTelex auto-space after suggestion: when user picks a suggestion and starts composing the next word,
             // insert space automatically, but skip it if the next character is punctuation (. , ; : ! ?) or word connector.
             final int codePoint = event.getCodePoint();
             final SettingsValues settingsValues = inputTransaction.getSettingsValues();
             if (SpaceState.PHANTOM == inputTransaction.getSpaceState()
-                    && "bn_khipro".equals(mWordComposer.getCombiningSpec())
+                    && ("bn_khipro".equals(mWordComposer.getCombiningSpec()) || "viet_telex".equals(mWordComposer.getCombiningSpec()))
                     && !settingsValues.isWordConnector(codePoint)
                     && !settingsValues.isUsuallyFollowedBySpace(codePoint)) {
                 insertAutomaticSpaceIfOptionsAndTextAllow(settingsValues);
                 mSpaceState = SpaceState.NONE;
             }
-            setComposingTextInternal(mWordComposer.getTypedWord(), 1);
+            if (event.getKeyCode() == KeyCode.DELETE) {
+                mSpaceState = SpaceState.NONE;
+                mDeleteCount++;
+                inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
+            } else if (mWordComposer.isSingleLetter()) {
+                mWordComposer.setCapitalizedModeAtStartComposingTime(inputTransaction.getShiftState());
+            }
+            setComposingTextInternal(getTextWithUnderline(mWordComposer.getTypedWord()), 1);
             inputTransaction.setDidAffectContents();
             inputTransaction.setRequiresUpdateSuggestions();
+        } else if (event.getKeyCode() == KeyCode.DELETE) {
+            mSpaceState = SpaceState.NONE;
+            mDeleteCount++;
+            mConnection.commitText("", 1);
+            inputTransaction.setDidAffectContents();
+            inputTransaction.setRequiresUpdateSuggestions();
+            inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
         }
     }
 
@@ -1143,6 +1190,7 @@ public final class InputLogic {
         }
         // isComposingWord() may have changed since we stored wasComposing
         if (mWordComposer.isComposingWord()) {
+            mWordComposer.finishVietTelexBoundary(settingsValues);
             if (settingsValues.mAutoCorrectEnabled && ! isInlineEmojiSearchAction()) {
                 final String separator = shouldAvoidSendingCode ? LastComposedWord.NOT_A_SEPARATOR
                         : StringUtils.newSingleCodePointString(codePoint);
@@ -1237,6 +1285,10 @@ public final class InputLogic {
                 // already displayed or not, so it's okay.
                 mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
             }
+        }
+
+        if (codePoint >= 0 && codePoint <= 0xFFFF) {
+            mWordComposer.noteVietTelexBoundaryCharacter((char) codePoint, settingsValues, mConnection);
         }
 
         inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
@@ -1427,6 +1479,16 @@ public final class InputLogic {
         } else if (inputTransaction.getSettingsValues().needsToLookupSuggestions()
             && inputTransaction.getSettingsValues().mSpacingAndPunctuations.mCurrentLanguageHasSpacesOrWordIterator) {
             restartSuggestionsOnWordTouchedByCursor(inputTransaction.getSettingsValues());
+        } else if (mWordComposer.hasVietTelexCombiner() && inputTransaction.getSettingsValues().mVnReEditWords
+                && !mConnection.hasSelection()) {
+            final CharSequence before = mConnection.getTextBeforeCursor(64, 0);
+            if (before != null) {
+                final String reopened = mWordComposer.reopenVietTelexLastCommit(before.toString(), inputTransaction.getSettingsValues());
+                if (reopened != null) {
+                    mConnection.deleteTextBeforeCursor(reopened.length());
+                    setComposingTextInternal(reopened, 1);
+                }
+            }
         }
     }
 
@@ -2111,6 +2173,7 @@ public final class InputLogic {
     private void resetEntireInputState(final int newSelStart, final int newSelEnd,
             final boolean clearSuggestionStrip) {
         final boolean shouldFinishComposition = mWordComposer.isComposingWord();
+        mWordComposer.resetVietTelexContext();
         resetComposingState(true /* alsoResetLastComposedWord */);
         if (clearSuggestionStrip) {
             mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
@@ -2303,6 +2366,7 @@ public final class InputLogic {
      */
     public void commitTyped(SettingsValues settingsValues, String separatorString) {
         if (!mWordComposer.isComposingWord()) return;
+        mWordComposer.finishVietTelexBoundary(settingsValues);
         String typedWord = mWordComposer.getTypedWord();
         if (typedWord.length() > 0) {
             boolean isBatchMode = mWordComposer.isBatchMode();
@@ -2328,6 +2392,7 @@ public final class InputLogic {
      * @param separator the separator that's causing the commit to happen.
      */
     private void commitCurrentAutoCorrection(SettingsValues settingsValues, String separator, LatinIME.UIHandler handler) {
+        mWordComposer.finishVietTelexBoundary(settingsValues);
         // Complete any pending suggestions query first
         if (handler.hasPendingUpdateSuggestions()) {
             handler.cancelUpdateSuggestionStrip();

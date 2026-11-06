@@ -96,6 +96,14 @@ fun TextCorrectionScreen(
             Settings.PREF_ADD_TO_PERSONAL_DICTIONARY else null,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             Settings.PREF_SPELLCHECK_SUGGEST else null,
+        R.string.settings_category_vietnamese_telex,
+        Settings.PREF_VN_FREE_MARKING,
+        Settings.PREF_VN_SIMPLE_TELEX,
+        Settings.PREF_VN_CONTEXTUAL_ENGLISH,
+        Settings.PREF_VN_AUTO_FIX_ADJACENT,
+        Settings.PREF_VN_AUTO_RESTORE,
+        Settings.PREF_VN_LIVE_SPELL_CHECK,
+        Settings.PREF_VN_RE_EDIT_WORDS,
     )
     SearchSettingsScreen(
         onClickBack = onClickBack,
@@ -285,6 +293,41 @@ fun createCorrectionSettings(context: Context) = listOf(
         R.string.spell_check_suggestions, R.string.spell_check_suggestions_summary
     ) {
         SwitchPreference(it, Defaults.PREF_SPELLCHECK_SUGGEST)
+    },
+    Setting(context, Settings.PREF_VN_FREE_MARKING,
+        R.string.vn_free_marking_title, R.string.vn_free_marking_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_FREE_MARKING)
+    },
+    Setting(context, Settings.PREF_VN_SIMPLE_TELEX,
+        R.string.vn_simple_telex_title, R.string.vn_simple_telex_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_SIMPLE_TELEX)
+    },
+    Setting(context, Settings.PREF_VN_CONTEXTUAL_ENGLISH,
+        R.string.vn_contextual_english_title, R.string.vn_contextual_english_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_CONTEXTUAL_ENGLISH)
+    },
+    Setting(context, Settings.PREF_VN_AUTO_FIX_ADJACENT,
+        R.string.vn_auto_fix_adjacent_title, R.string.vn_auto_fix_adjacent_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_AUTO_FIX_ADJACENT)
+    },
+    Setting(context, Settings.PREF_VN_AUTO_RESTORE,
+        R.string.vn_auto_restore_title, R.string.vn_auto_restore_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_AUTO_RESTORE)
+    },
+    Setting(context, Settings.PREF_VN_LIVE_SPELL_CHECK,
+        R.string.vn_live_spell_check_title, R.string.vn_live_spell_check_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_LIVE_SPELL_CHECK)
+    },
+    Setting(context, Settings.PREF_VN_RE_EDIT_WORDS,
+        R.string.vn_re_edit_words_title, R.string.vn_re_edit_words_summary
+    ) {
+        SwitchPreference(it, Defaults.PREF_VN_RE_EDIT_WORDS)
     },
 )
 

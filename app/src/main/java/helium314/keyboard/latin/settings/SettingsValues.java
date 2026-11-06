@@ -158,6 +158,13 @@ public class SettingsValues {
     public final boolean mSuggestClipboardContent;
     public final boolean mIncognitoModeEnabled;
     public final boolean mLongPressSymbolsForNumpad;
+    public final boolean mVnFreeMarking;
+    public final boolean mVnSimpleTelex;
+    public final boolean mVnContextualEnglish;
+    public final boolean mVnAutoFixAdjacent;
+    public final boolean mVnAutoRestore;
+    public final boolean mVnLiveSpellCheck;
+    public final boolean mVnReEditWords;
 
     // From the input box
     @NonNull
@@ -339,6 +346,13 @@ public class SettingsValues {
         mFontSizeMultiplierEmoji = prefs.getFloat(Settings.PREF_EMOJI_FONT_SCALE, Defaults.PREF_EMOJI_FONT_SCALE);
         mEmojiKeyFit = prefs.getBoolean(Settings.PREF_EMOJI_KEY_FIT, Defaults.PREF_EMOJI_KEY_FIT);
         mPunctuationSuggestions = Settings.readPunctuationSuggestions(context);
+        mVnFreeMarking = prefs.getBoolean(Settings.PREF_VN_FREE_MARKING, Defaults.PREF_VN_FREE_MARKING);
+        mVnSimpleTelex = prefs.getBoolean(Settings.PREF_VN_SIMPLE_TELEX, Defaults.PREF_VN_SIMPLE_TELEX);
+        mVnContextualEnglish = prefs.getBoolean(Settings.PREF_VN_CONTEXTUAL_ENGLISH, Defaults.PREF_VN_CONTEXTUAL_ENGLISH);
+        mVnAutoFixAdjacent = prefs.getBoolean(Settings.PREF_VN_AUTO_FIX_ADJACENT, Defaults.PREF_VN_AUTO_FIX_ADJACENT);
+        mVnAutoRestore = prefs.getBoolean(Settings.PREF_VN_AUTO_RESTORE, Defaults.PREF_VN_AUTO_RESTORE);
+        mVnLiveSpellCheck = prefs.getBoolean(Settings.PREF_VN_LIVE_SPELL_CHECK, Defaults.PREF_VN_LIVE_SPELL_CHECK);
+        mVnReEditWords = prefs.getBoolean(Settings.PREF_VN_RE_EDIT_WORDS, Defaults.PREF_VN_RE_EDIT_WORDS);
     }
 
     public boolean needsToLookupSuggestions() {
