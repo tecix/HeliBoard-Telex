@@ -46,7 +46,7 @@ object VNLexicon2Data {
     }
 
     /** Lazy: lần đầu cần mới map/giải mã offset. */
-    val blob: Blob by lazy { Blob(KeyboardData.buffer(Keys.ASSET_LEXICON)) }
+    val blob: Blob by lazy { Blob(KeyboardData.buffer("vnlexicon.bin")) }
 
     /** Bucket top-32 cho prefix 1 phím (hot path). */
     val firstCharTop: Map<Char, IntArray> = mapOf(

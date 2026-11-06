@@ -206,14 +206,13 @@ object AdjacentKeyFixer {
             correction(raw,
                 compose = compose,
                 frequency = { VNSuggest.frequency(it) },
-                hasCompletion = { VNSuggest.matches(it, poolLimit = 1).isNotEmpty() },
-                vniMode = vniMode)
+                hasCompletion = { VNSuggest.matches(it, poolLimit = 1).isNotEmpty() })
         }
 
     /** [toneSlipCorrection] theo hàm [compose] (Telex; VNI không có phím thanh chữ), cache chung (khoá tách). */
     fun lexiconToneSlip(raw: String, compose: (String) -> String, vniMode: Boolean = false): String? =
         if (vniMode) null else defaultCache.value("\u0001" + raw) {
-            toneSlipCorrection(raw, compose = compose, frequency = { VNSuggest.frequency(it) }, vniMode = false)
+            toneSlipCorrection(raw, compose = compose, frequency = { VNSuggest.frequency(it) })
         }
 
     fun clearCache() {

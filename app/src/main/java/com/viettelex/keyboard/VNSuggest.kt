@@ -117,7 +117,7 @@ object VNSuggest {
      * hoà → hòa), -1 nếu không có. Không đụng SwipeLexicon (thanh gợi ý chạy cả khi tắt vuốt).
      */
     fun lexiconId(word: String): Int {
-        val w = SyllableLM.normalize(word)
+        val w = Normalizer.normalize(word.lowercase(), Normalizer.Form.NFC)
         val dec = decompose(w) ?: return -1
         val b = lex()
         val bytes = w.toByteArray(Charsets.UTF_8)

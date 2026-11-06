@@ -2,34 +2,19 @@
 package helium314.keyboard.viettelex
 
 import com.viettelex.keyboard.AdjacentKeyFixer
-import com.viettelex.keyboard.VNLexicon2
+import com.viettelex.keyboard.VNLexicon2Data
 import com.viettelex.keyboard.VNSuggest
 import com.viettelex.telexcore.TelexEngine
 import helium314.keyboard.event.Event
 import helium314.keyboard.event.VietTelexCombiner
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.WordComposer
-import java.io.File
-import java.io.FileInputStream
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class VietTelexIntegrationTest {
-
-    @BeforeTest
-    fun setUp() {
-        val assetCandidates = listOf(
-            File("src/main/assets/vnlexicon.bin"),
-            File("app/src/main/assets/vnlexicon.bin")
-        )
-        val assetFile = assetCandidates.firstOrNull { it.exists() }
-        if (assetFile != null) {
-            FileInputStream(assetFile).use { VNLexicon2.loadFromStream(it) }
-        }
-    }
 
     @Test
     fun testFreeMarkingOption() {
@@ -70,7 +55,7 @@ class VietTelexIntegrationTest {
 
     @Test
     fun testAutoFixAdjacentSlip() {
-        assertTrue(VNLexicon2.isReady, "vnlexicon.bin should be loaded")
+        assertNotNull(VNLexicon2Data.blob, "vnlexicon.bin should be loaded")
         val composer = { raw: String ->
             val e = TelexEngine().apply {
                 freeMarking = true

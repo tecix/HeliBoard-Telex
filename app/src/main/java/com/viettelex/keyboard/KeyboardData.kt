@@ -3,6 +3,8 @@ package com.viettelex.keyboard
 import android.content.Context
 import java.io.File
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * Mở file dữ liệu nhị phân đóng gói kèm bàn phím (vnlexicon.bin).
@@ -17,6 +19,12 @@ object KeyboardData {
     fun install(context: Context) {
         val appAssets = context.applicationContext.assets
         open = { name -> runCatching { appAssets.open(name) }.getOrNull() }
+    }
+
+    fun buffer(name: String): ByteBuffer {
+        val bytes = open(name)?.use { it.readBytes() }
+            ?: error("Missing keyboard asset: $name")
+        return ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
     }
 
     private fun openFromAssetsDir(name: String): InputStream? {

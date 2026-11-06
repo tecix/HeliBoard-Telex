@@ -657,7 +657,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
 
         var score = SuggestedWordInfo.MAX_SCORE - 10
         for (candidate in pool.take(5)) {
-            val formatted = applyCase(candidate)
+            val formatted = applyCase(candidate.word)
             if (seen.add(formatted.lowercase())) {
                 suggestionsContainer.add(
                     insertPos++,
