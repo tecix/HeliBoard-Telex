@@ -329,7 +329,7 @@ public final class WordComposer {
         final int length = codePoints.length;
         final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
         if (vt != null) {
-            final String word = StringUtils.getStringFromCodePoints(codePoints);
+            final String word = new String(codePoints, 0, length);
             vt.resumeWord(word, Settings.getValues());
             mCombinerChain.refreshStateFeedback();
             refreshTypedWordCache();
