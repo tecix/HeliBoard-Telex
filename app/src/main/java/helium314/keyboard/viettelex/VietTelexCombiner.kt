@@ -114,16 +114,18 @@ class VietTelexCombiner : Combiner {
 
         pendingSeedWord?.let { w ->
             pendingSeedWord = null
-            if (codePoint < 128) {
+            if (codePoint in 'a'.code..'z'.code || codePoint in 'A'.code..'Z'.code) {
                 val ch = codePoint.toChar()
-                if (ReEdit.isTransformKey(ch, false) || ch.lowercaseChar() in "aeod") {
-                    if (engine.seed(w)) {
-                        val action = engine.feed(ch)
-                        if (action is TelexAction.Replace && action.backspaces > 0 && engine.composed != w + ch) {
-                            return Event.createConsumedEvent(event)
-                        }
-                        engine.reset()
+                if (engine.seed(w)) {
+                    val action = engine.feed(ch)
+                    if (isReEditKey(ch) && action is TelexAction.Replace && action.backspaces > 0 && engine.composed != w + ch) {
+                        return Event.createConsumedEvent(event)
                     }
+                    // a plain letter extends the word ("tiê" + n): keep it in the engine so later tone keys apply
+                    if (engine.composed == w + ch) return Event.createConsumedEvent(event)
+                    engine.reset()
+                } else if (isReEditKey(ch) && replayRawWord(engine, w, ch)) {
+                    return Event.createConsumedEvent(event)
                 }
             }
             committedPrefix.append(w)
@@ -234,7 +236,7 @@ class VietTelexCombiner : Combiner {
         if (!(vs?.reEditWords ?: true)) return false
         if (!ReEdit.isTransformKey(ch, false)) return false
         val trial = createTrialEngine(vs)
-        if (!trial.seed(word)) return false
+        if (!trial.seed(word)) return replayRawWord(trial, word, ch)
         val action = trial.feed(ch)
         return action is TelexAction.Replace && action.backspaces > 0 && trial.composed != word + ch
     }
@@ -249,7 +251,12 @@ class VietTelexCombiner : Combiner {
         boundaryCommittedWord = null
         isResumedLocked = false
         cursorAtWordEnd = true
-        return engine.seed(word)
+        if (engine.seed(word)) return true
+        // word left as raw keys by auto-restore ("vieet"): canSeedAndTransform already checked the next key
+        if (!isRawAsciiWord(word)) return false
+        engine.reset()
+        for (c in word) engine.feed(c)
+        return true
     }
 
     override val combiningStateFeedback: CharSequence
@@ -285,6 +292,29 @@ class VietTelexCombiner : Combiner {
     }
 
     companion object {
+        /** Keys that may transform an already typed word: tone/horn keys and the doubling vowels / d. */
+        private fun isReEditKey(ch: Char) = ReEdit.isTransformKey(ch, false) || ch.lowercaseChar() in "aeod"
+
+        private fun isRawAsciiWord(word: String) =
+            word.isNotEmpty() && word.length <= ReEdit.MAX_WORD && word.all { it in 'a'..'z' || it in 'A'..'Z' }
+
+        /**
+         * A word that auto-restore left as its raw keys ("vieet", since "viêt" is not a valid syllable)
+         * cannot be [TelexEngine.seed]ed, because seeding needs an exact round trip. Replay its raw keys
+         * plus [ch] instead, and accept only a valid Vietnamese result, i.e. one the boundary would not
+         * restore again — so English words ("google" + s) stay literal. On failure [e] is reset.
+         */
+        private fun replayRawWord(e: TelexEngine, word: String, ch: Char): Boolean {
+            if (!isRawAsciiWord(word)) return false
+            e.reset()
+            for (c in word) e.feed(c)
+            e.feed(ch)
+            val composed = e.composed
+            if (composed != word + ch && e.peekCommitText(VietTelexSettings.current?.autoRestore ?: true) == composed) return true
+            e.reset()
+            return false
+        }
+
         fun createTrialEngine(vs: VietTelexSettings.Values? = VietTelexSettings.current): TelexEngine =
             TelexEngine().apply {
                 if (vs != null) {

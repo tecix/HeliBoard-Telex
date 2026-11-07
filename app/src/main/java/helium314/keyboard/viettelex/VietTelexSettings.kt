@@ -28,14 +28,24 @@ object VietTelexSettings {
     /** All options default to on. */
     const val DEFAULT = true
 
-    class Values(prefs: SharedPreferences) {
-        val freeMarking = prefs.getBoolean(PREF_FREE_MARKING, DEFAULT)
-        val simpleTelex = prefs.getBoolean(PREF_SIMPLE_TELEX, DEFAULT)
-        val contextualEnglish = prefs.getBoolean(PREF_CONTEXTUAL_ENGLISH, DEFAULT)
-        val autoFixAdjacent = prefs.getBoolean(PREF_AUTO_FIX_ADJACENT, DEFAULT)
-        val autoRestore = prefs.getBoolean(PREF_AUTO_RESTORE, DEFAULT)
-        val liveSpellCheck = prefs.getBoolean(PREF_LIVE_SPELL_CHECK, DEFAULT)
-        val reEditWords = prefs.getBoolean(PREF_RE_EDIT_WORDS, DEFAULT)
+    class Values(
+        val freeMarking: Boolean = DEFAULT,
+        val simpleTelex: Boolean = DEFAULT,
+        val contextualEnglish: Boolean = DEFAULT,
+        val autoFixAdjacent: Boolean = DEFAULT,
+        val autoRestore: Boolean = DEFAULT,
+        val liveSpellCheck: Boolean = DEFAULT,
+        val reEditWords: Boolean = DEFAULT,
+    ) {
+        constructor(prefs: SharedPreferences) : this(
+            freeMarking = prefs.getBoolean(PREF_FREE_MARKING, DEFAULT),
+            simpleTelex = prefs.getBoolean(PREF_SIMPLE_TELEX, DEFAULT),
+            contextualEnglish = prefs.getBoolean(PREF_CONTEXTUAL_ENGLISH, DEFAULT),
+            autoFixAdjacent = prefs.getBoolean(PREF_AUTO_FIX_ADJACENT, DEFAULT),
+            autoRestore = prefs.getBoolean(PREF_AUTO_RESTORE, DEFAULT),
+            liveSpellCheck = prefs.getBoolean(PREF_LIVE_SPELL_CHECK, DEFAULT),
+            reEditWords = prefs.getBoolean(PREF_RE_EDIT_WORDS, DEFAULT),
+        )
     }
 
     @Volatile

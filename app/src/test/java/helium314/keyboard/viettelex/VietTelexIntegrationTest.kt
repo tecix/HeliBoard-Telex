@@ -73,4 +73,57 @@ class VietTelexIntegrationTest {
         assertTrue(dict.exists(), "main_vi.dict should exist in assets/dicts")
         assertTrue(dict.length() > 100_000, "main_vi.dict should be a valid non-empty dictionary file")
     }
+
+    private fun VietTelexCombiner.type(text: String) {
+        for (ch in text) processEvent(arrayListOf(), Event.createSoftwareKeypressEvent(ch.code, 0, 0, 0, false))
+    }
+
+    /** Word resumed by moving the cursor back to its end (no reopen snapshot), as in WordComposer.setComposingWord. */
+    private fun resumed(word: String) = VietTelexCombiner().apply { reset(); resumeWord(word) }
+
+    @Test
+    fun reEditResumedWordThenMoreLettersThenTone() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        val c = resumed("tiê")
+        c.type("ngs")
+        assertEquals("tiếng", c.combiningStateFeedback.toString())
+    }
+
+    @Test
+    fun reEditAutoRestoredWordGetsTone() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        val c = VietTelexCombiner()
+        c.type("vieet")
+        assertEquals("vieet", c.commitBoundary()) // invalid "viêt" is restored to raw keys
+        c.reset()
+        c.resumeWord("vieet") // backspace over the space
+        c.type("j")
+        assertEquals("việt", c.combiningStateFeedback.toString())
+    }
+
+    @Test
+    fun reEditKeepsEnglishAndExistingBehaviour() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        resumed("google").let { it.type("s"); assertEquals("googles", it.combiningStateFeedback.toString()) }
+        resumed("anh").let { it.type("s"); assertEquals("ánh", it.combiningStateFeedback.toString()) }
+        resumed("tieng").let { it.type("s"); assertEquals("tiéng", it.combiningStateFeedback.toString()) }
+        resumed("to").let { it.type("o"); assertEquals("tô", it.combiningStateFeedback.toString()) }
+        resumed("hoc").let { it.type("j"); assertEquals("học", it.combiningStateFeedback.toString()) }
+        // re-edit disabled: resumed word is locked, letters are appended literally
+        VietTelexSettings.current = VietTelexSettings.Values(reEditWords = false)
+        resumed("tiê").let { it.type("ngs"); assertEquals("tiêngs", it.combiningStateFeedback.toString()) }
+        resumed("vieet").let { it.type("j"); assertEquals("vieetj", it.combiningStateFeedback.toString()) }
+    }
+
+    @Test
+    fun seedAfterWordWithoutComposingHandlesRestoredWord() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        val c = VietTelexCombiner()
+        assertTrue(c.canSeedAndTransform("vieet", 'j'))
+        assertTrue(c.seedForTransform("vieet"))
+        c.type("j")
+        assertEquals("việt", c.combiningStateFeedback.toString())
+        assertEquals(false, VietTelexCombiner().canSeedAndTransform("google", 's'))
+    }
+
 }
