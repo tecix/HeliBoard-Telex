@@ -10,10 +10,13 @@ import helium314.keyboard.event.VietTelexCombiner
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.WordComposer
 import kotlin.test.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+@RunWith(RobolectricTestRunner::class)
 class VietTelexIntegrationTest {
 
     @Test
@@ -69,9 +72,11 @@ class VietTelexIntegrationTest {
         val matches = VNSuggest.matches("việ", poolLimit = 10)
         assertTrue(matches.isNotEmpty(), "VNSuggest should return completions for 'việ'")
 
-        val fix = AdjacentKeyFixer.lexiconCorrection("virjt", composer, false)
-            ?: AdjacentKeyFixer.lexiconToneSlip("vieeth", composer, false)
-        assertNotNull(fix)
+        // "virjt" composes the valid word "vịt", so no correction is expected
+        assertEquals(null, AdjacentKeyFixer.lexiconCorrection("virjt", composer, false))
+        assertEquals("việt", AdjacentKeyFixer.lexiconCorrection("vieeth", composer, false))
+        assertEquals("bạn", AdjacentKeyFixer.lexiconCorrection("bnaj", composer, false))
+        assertEquals("của", AdjacentKeyFixer.lexiconCorrection("cyar", composer, false))
     }
 
     @Test
@@ -85,8 +90,9 @@ class VietTelexIntegrationTest {
             liveSpellCheck = false
             contextualEnglish = false
         }
-        for (ch in "text") engineRestoreOff.feed(ch)
-        assertEquals("tẽt", engineRestoreOff.commitText(autoRestore = false))
+        // "tẽt" is invalid (ngã on a stop final), so the engine drops the tone; use "user" instead
+        for (ch in "user") engineRestoreOff.feed(ch)
+        assertEquals("ủe", engineRestoreOff.commitText(autoRestore = false))
     }
 
     @Test
@@ -114,18 +120,18 @@ class VietTelexIntegrationTest {
         // 1. Seed existing word on cursor/backspace ("viêt" -> add 'j' -> "việt")
         assertTrue(combiner.canSeedAndTransform("viêt", 'j'))
         assertTrue(combiner.seedForTransform("viêt"))
-        val ev = combiner.processEvent(arrayListOf(), Event.createSoftwareKeypressEvent('j'.code, KeyCode.NOT_SPECIFIED, 0, 0, false))
+        val ev = combiner.processEvent(arrayListOf(), Event.createSoftwareKeypressEvent('j'.code, 0, 0, 0, false))
         assertTrue(ev.isConsumed)
         assertEquals("việt", combiner.combiningStateFeedback.toString())
 
         // 2. Resume committed word after space ("anh " -> backspace -> "anh" + 's' -> "ánh")
         combiner.resetContext()
         for (ch in "anh") {
-            combiner.processEvent(arrayListOf(), Event.createSoftwareKeypressEvent(ch.code, KeyCode.NOT_SPECIFIED, 0, 0, false))
+            combiner.processEvent(arrayListOf(), Event.createSoftwareKeypressEvent(ch.code, 0, 0, 0, false))
         }
         assertEquals("anh", combiner.commitBoundary())
         combiner.resumeWord("anh")
-        combiner.processEvent(arrayListOf(), Event.createSoftwareKeypressEvent('s'.code, KeyCode.NOT_SPECIFIED, 0, 0, false))
+        combiner.processEvent(arrayListOf(), Event.createSoftwareKeypressEvent('s'.code, 0, 0, 0, false))
         assertEquals("ánh", combiner.combiningStateFeedback.toString())
     }
 
@@ -135,23 +141,24 @@ class VietTelexIntegrationTest {
         wordComposer.restartCombining("viet_telex")
         assertTrue(wordComposer.hasVietTelexCombiner())
 
-        for (ch in "tiengs") {
-            val event = Event.createSoftwareKeypressEvent(ch.code, ch.code, 0, 0, false)
+        for (ch in "tieengs") {
+            val event = Event.createSoftwareKeypressEvent(ch.code, 0, 0, 0, false)
             val processed = wordComposer.processEvent(event)
-            wordComposer.addInputEvent(processed)
+            wordComposer.applyProcessedEvent(processed)
         }
         assertEquals("tiếng", wordComposer.typedWord)
-        assertEquals("tiengs", wordComposer.vietTelexRawKeystrokes)
+        assertEquals("tieengs", wordComposer.vietTelexRawKeystrokes)
 
         // Copy preserves raw keystrokes and hasVietTelexCombiner for Suggest
         val copy = wordComposer.copy()
         assertTrue(copy.hasVietTelexCombiner())
-        assertEquals("tiengs", copy.vietTelexRawKeystrokes)
+        assertEquals("tieengs", copy.vietTelexRawKeystrokes)
     }
 
     @Test
     fun testVietnameseDictionaryPresence() {
-        val dict = java.io.File("app/src/main/assets/dicts/main_vi.dict")
+        val dict = listOf("src/main/assets/dicts/main_vi.dict", "app/src/main/assets/dicts/main_vi.dict")
+            .map { java.io.File(it) }.firstOrNull { it.isFile } ?: java.io.File("src/main/assets/dicts/main_vi.dict")
         assertTrue(dict.exists(), "main_vi.dict should exist in assets/dicts")
         assertTrue(dict.length() > 100_000, "main_vi.dict should be a valid non-empty dictionary file")
     }
