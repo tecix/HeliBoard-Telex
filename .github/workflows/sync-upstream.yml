@@ -4,8 +4,7 @@ name: Sync upstream HeliBoard
 # Details and conflict resolution: docs/UPSTREAM_SYNC.md
 
 on:
-  schedule:
-    - cron: '0 2 * * 1' # every Monday 02:00 UTC
+  # manual only: Actions tab -> Sync upstream HeliBoard -> Run workflow
   workflow_dispatch:
     inputs:
       ref:

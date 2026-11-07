@@ -11,10 +11,10 @@ merged with few conflicts:
 | UI strings | `res/values*/strings_viettelex.xml` | no |
 | One-line hook calls | the files listed below | yes, small |
 
-## Automatic sync
+## Sync workflow
 
-`.github/workflows/sync-upstream.yml` runs every Monday (and on demand from the Actions tab, where a
-release tag such as `v4.4` can be chosen instead of `main`). It runs `scripts/sync-upstream.sh`,
+`.github/workflows/sync-upstream.yml` runs only when started by hand (Actions tab → *Sync upstream
+HeliBoard* → *Run workflow*, where a release tag such as `v4.4` can be chosen instead of `main`). It runs `scripts/sync-upstream.sh`,
 which merges upstream into a copy of `main` and runs the Vietnamese tests. Then:
 
 - **Merged, tests pass**: pushes `upstream-sync/<ref>-<sha>`, builds the debug APK (run artifact) and
