@@ -104,6 +104,18 @@ class VietTelexInputLogicTest {
         assertEquals("tiêngs nay", text)
     }
 
+
+
+
+
+    @Test fun typingAfterAppClearsFieldWhileComposing() {
+        type("nguwo")
+        assertEquals("ngưo", text)
+        clearFieldExternally() // e.g. the X button of a search box
+        type("dduwow")
+        assertEquals("đươ", text)
+    }
+
     // ------- helpers (same approach as InputLogicTest) ---------
 
     private fun type(s: String) = s.forEach {
@@ -136,6 +148,19 @@ class VietTelexInputLogicTest {
         selectionStart = pos
         selectionEnd = pos
         latinIME.onUpdateSelection(oldStart, oldEnd, pos, pos, composingStart, composingEnd)
+        handleMessages()
+    }
+
+    /** The app empties the field (e.g. a search box's X button) while a word is being composed. */
+    private fun clearFieldExternally() {
+        val oldStart = selectionStart
+        val oldEnd = selectionEnd
+        ShadowInputMethodService.text = ""
+        selectionStart = 0
+        selectionEnd = 0
+        composingStart = -1
+        composingEnd = -1
+        latinIME.onUpdateSelection(oldStart, oldEnd, 0, 0, -1, -1)
         handleMessages()
     }
 

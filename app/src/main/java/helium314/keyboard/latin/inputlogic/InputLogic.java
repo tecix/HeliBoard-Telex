@@ -493,6 +493,8 @@ public final class InputLogic {
             resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), true);
         } else if (vietTelexAction == VietTelexHooks.ACTION_COMMIT_TYPED) {
             commitTyped(settingsValues, LastComposedWord.NOT_A_SEPARATOR);
+        } else if (vietTelexAction == VietTelexHooks.ACTION_RESET) {
+            resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), false);
         }
 
         Event processedEvent = mWordComposer.processEvent(event);

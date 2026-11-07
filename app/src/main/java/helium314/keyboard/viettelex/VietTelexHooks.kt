@@ -47,6 +47,8 @@ object VietTelexHooks {
     const val ACTION_UNLEARN_AND_RESET = 1
     /** [beforeCodeInput] result: commit the composing word without separator. */
     const val ACTION_COMMIT_TYPED = 2
+    /** [beforeCodeInput] result: reset the entire input state, keeping the composing word in the text. */
+    const val ACTION_RESET = 3
 
     /**
      * Runs at the start of InputLogic.onCodeInput (inside the batch edit). Finishes a word picked
@@ -66,6 +68,16 @@ object VietTelexHooks {
         ) {
             return if (wordComposer.isCursorFrontOrMiddleOfComposingWord) ACTION_UNLEARN_AND_RESET
             else ACTION_COMMIT_TYPED
+        }
+        // A letter typed at the front or in the middle of the composing word, e.g. after the app
+        // emptied the field while a word was being composed (search box "X"). InputLogic resets in
+        // handleNonSeparatorEvent, but only after the combiner has already passed the key through
+        // raw; reset first (same rules as handleNonSeparatorEvent) so the combiner starts clean.
+        if (wordComposer.isComposingWord && wordComposer.isCursorFrontOrMiddleOfComposingWord
+            && !event.isFunctionalKeyEvent && event.codePoint > 0
+            && !settingsValues.isWordSeparator(event.codePoint)
+        ) {
+            return if (wordComposer.isCursorInFrontOfComposingWord) ACTION_RESET else ACTION_UNLEARN_AND_RESET
         }
         if (!wordComposer.isComposingWord && (VietTelexSettings.current?.reEditWords ?: true)
             && !event.isFunctionalKeyEvent && event.codePoint > 0 && event.codePoint < 128
@@ -157,12 +169,6 @@ object VietTelexHooks {
             AdjacentKeyFixer.lexiconToneSlip(raw, { VietTelexCombiner.composeTrial(it) }, false)
         } else null
 
-        val seen = HashSet<String>(suggestionsContainer.size + 8)
-        seen.add(typedWordString.lowercase())
-        for (existing in suggestionsContainer) {
-            seen.add(existing.word.lowercase())
-        }
-
         val capitalizeFirst = typedWordString.firstOrNull()?.isUpperCase() == true
         fun applyCase(word: String): String {
             if (!capitalizeFirst || word.isEmpty()) return word
@@ -173,27 +179,29 @@ object VietTelexHooks {
             SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE
         )
 
+        val typedLower = typedWordString.lowercase()
+        val placed = HashSet<String>()
         var insertPos = 0
-        if (fix != null) {
-            val formattedFix = applyCase(fix)
-            if (seen.add(formattedFix.lowercase())) {
-                suggestionsContainer.add(insertPos++, info(formattedFix, SuggestedWordInfo.MAX_SCORE - 1))
-            }
+        // Puts [word] at [insertPos]. A copy the main dictionary already suggested is moved here
+        // instead of being kept further down: the dictionary often already has the most frequent
+        // completions ("không" for "khôn"), and skipping them pushed them off the strip.
+        fun place(word: String, score: Int): Boolean {
+            val formatted = applyCase(word)
+            val lower = formatted.lowercase()
+            if (lower == typedLower || !placed.add(lower)) return false
+            // only entries after insertPos can match: earlier ones are words placed here before
+            suggestionsContainer.removeAll { it.word.lowercase() == lower }
+            suggestionsContainer.add(insertPos++, info(formatted, score))
+            return true
         }
+
+        if (fix != null) place(fix, SuggestedWordInfo.MAX_SCORE - 1)
 
         var score = SuggestedWordInfo.MAX_SCORE - 10
         for (candidate in pool.take(5)) {
-            val formatted = applyCase(candidate.word)
-            if (seen.add(formatted.lowercase())) {
-                suggestionsContainer.add(insertPos++, info(formatted, score--))
-            }
+            if (place(candidate.word, score)) score--
         }
 
-        if (slip != null) {
-            val formattedSlip = applyCase(slip)
-            if (seen.add(formattedSlip.lowercase())) {
-                suggestionsContainer.add(insertPos, info(formattedSlip, score))
-            }
-        }
+        if (slip != null) place(slip, score)
     }
 }

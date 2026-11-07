@@ -148,6 +148,9 @@ sequenceDiagram
 - `WordComposer` giữ thêm **chuỗi phím gốc** (`tieengs`) — gợi ý và sửa chạm trượt cần nó.
 - Ký tự không phải chữ cái (số, dấu nối) khiến engine chốt phần đang ghép rồi nối ký tự vào sau.
 - Ô mật khẩu và ô kiểu "null" không đi qua engine.
+- Nếu phím chữ rơi vào **đầu hoặc giữa** từ đang soạn (ví dụ ứng dụng vừa xóa ô nhập khi đang gõ dở —
+  nút X của ô tìm kiếm), `beforeCodeInput` yêu cầu InputLogic đặt lại trạng thái **trước** khi combiner
+  nhận phím (`ACTION_RESET` / `ACTION_UNLEARN_AND_RESET`), theo đúng quy tắc HeliBoard dùng cho ngôn ngữ khác.
 
 ## 5. Thanh gợi ý
 
@@ -163,6 +166,10 @@ flowchart LR
     F --> H
     G --> H
 ```
+
+Từ của VNSuggest được xếp lên đầu theo tần suất; nếu từ điển `main_vi.dict` đã gợi ý cùng từ đó ở vị
+trí thấp hơn, bản đó được **dời lên** chứ không bị bỏ qua (nếu bỏ qua, từ phổ biến nhất như `không` khi
+gõ `khôn` sẽ rơi khỏi thanh gợi ý).
 
 Sửa chạm trượt chỉ **đề xuất** trên thanh gợi ý, không tự thay chữ. Tắt "Gợi ý sửa lỗi chạm trượt"
 thì bỏ hai nhánh `AdjacentKeyFixer`.

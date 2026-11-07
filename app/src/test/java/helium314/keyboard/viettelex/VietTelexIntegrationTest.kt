@@ -9,6 +9,10 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.viettelex.VietTelexSettings
+import helium314.keyboard.viettelex.VietTelexHooks
+import helium314.keyboard.latin.dictionary.Dictionary
+import helium314.keyboard.latin.suggestions.SuggestedWordInfo
+import java.util.Locale
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.assertEquals
@@ -124,6 +128,26 @@ class VietTelexIntegrationTest {
         c.type("j")
         assertEquals("việt", c.combiningStateFeedback.toString())
         assertEquals(false, VietTelexCombiner().canSeedAndTransform("google", 's'))
+    }
+
+
+    @Test
+    fun suggestionsPromoteCompletionsTheDictionaryAlreadyHas() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        val wordComposer = WordComposer()
+        wordComposer.restartCombining("viet_telex")
+        for (ch in "khoon") wordComposer.applyProcessedEvent(
+            wordComposer.processEvent(Event.createSoftwareKeypressEvent(ch.code, 0, 0, 0, false)))
+        assertEquals("khôn", wordComposer.typedWord)
+        fun dict(word: String, score: Int) = SuggestedWordInfo(word, "", score, SuggestedWordInfo.KIND_CORRECTION,
+            Dictionary.DICTIONARY_USER_TYPED, SuggestedWordInfo.NOT_AN_INDEX, SuggestedWordInfo.NOT_A_CONFIDENCE)
+        // main dictionary already suggested the most frequent completion, but low in the list
+        val container = arrayListOf(dict("khống", 120), dict("khôn", 110), dict("khống chế", 100), dict("không", 90))
+        VietTelexHooks.addSuggestions(wordComposer, "khôn", container, Locale.forLanguageTag("vi"))
+        assertEquals(listOf("không", "khốn", "khổng", "khống", "khồng"), container.take(5).map { it.word })
+        assertEquals(1, container.count { it.word == "không" })
+        assertEquals(1, container.count { it.word == "khống" })
+        assertTrue(container.any { it.word == "khống chế" }) // other dictionary entries are kept
     }
 
 }

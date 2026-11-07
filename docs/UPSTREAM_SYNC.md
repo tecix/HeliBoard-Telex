@@ -48,7 +48,9 @@ change makes a hook stop running even if the engine tests still pass, so check i
 **`latin/inputlogic/InputLogic.java`**
 - `startInput`: `restartCombining(VietTelexHooks.combiningSpecFor(...))` and `VietTelexHooks.resetContext`
 - `onCodeInput`: `mConnection.beginBatchEdit()` moved before `VietTelexHooks.beforeCodeInput(...)`,
-  which returns `ACTION_UNLEARN_AND_RESET` / `ACTION_COMMIT_TYPED` for InputLogic to perform
+  which returns `ACTION_UNLEARN_AND_RESET` / `ACTION_RESET` / `ACTION_COMMIT_TYPED` for InputLogic to
+  perform (the reset ones handle a letter typed in front of / inside the composing word, e.g. after the
+  app emptied the field, before the combiner sees it)
 - `handleNonFunctionalEvent`, combining branch: `viet_telex` shares Khipro's auto-space after a picked
   suggestion; DELETE events from a combiner update space state, delete count and shift state
 - `handleSeparatorEvent`: `VietTelexHooks.finishBoundary` before committing,
