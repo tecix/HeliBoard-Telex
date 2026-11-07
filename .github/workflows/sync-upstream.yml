@@ -1,0 +1,154 @@
+name: Sync upstream HeliBoard
+# Merges new upstream HeliBoard commits into a branch, runs the Vietnamese Telex tests,
+# builds the APK and opens a pull request. Merge conflicts are reported as an issue.
+# Details and conflict resolution: docs/UPSTREAM_SYNC.md
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # every Monday 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Upstream branch or release tag (e.g. main, v4.4)'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      REF: ${{ inputs.ref || 'main' }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Configure git
+        run: |
+          chmod +x gradlew
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge upstream and run Vietnamese tests
+        id: sync
+        run: |
+          set +e
+          ABORT_ON_CONFLICT=1 bash scripts/sync-upstream.sh "$REF"
+          code=$?
+          # 2 = conflict and 3 = tests failed are reported by the steps below
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ] && [ "$code" -ne 3 ]; then exit "$code"; fi
+          exit 0
+
+      - name: Check for an existing sync branch
+        id: branch
+        if: steps.sync.outputs.status == 'merged'
+        run: |
+          sha="${{ steps.sync.outputs.target_sha }}"
+          name="upstream-sync/${REF//\//-}-${sha:0:8}"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --heads origin "$name" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "$name already exists, nothing new to propose."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Full test suite (informational)
+        id: full
+        if: steps.sync.outputs.status == 'merged' && steps.branch.outputs.exists == 'false'
+        continue-on-error: true
+        run: ./gradlew --no-daemon :viettelex-core:test testRunTestsUnitTest
+
+      - name: Build APK
+        if: steps.sync.outputs.status == 'merged' && steps.branch.outputs.exists == 'false' && steps.sync.outputs.tests == 'passed'
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK
+        if: steps.sync.outputs.status == 'merged' && steps.branch.outputs.exists == 'false' && steps.sync.outputs.tests == 'passed'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HeliBoard-Telex-upstream-sync-debug
+          path: app/build/outputs/apk/debug/*-debug*.apk
+
+      - name: Push branch and open pull request
+        if: steps.sync.outputs.status == 'merged' && steps.branch.outputs.exists == 'false'
+        run: |
+          branch="${{ steps.branch.outputs.name }}"
+          sha="${{ steps.sync.outputs.target_sha }}"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          git push origin "HEAD:refs/heads/$branch"
+          title="Sync upstream HeliBoard $REF (${sha:0:8})"
+          {
+            echo "Merges ${{ steps.sync.outputs.new_commits }} new upstream commit(s) from HeliBorg/HeliBoard \`$REF\` (\`$sha\`)."
+            echo
+            echo "- Vietnamese tests: **${{ steps.sync.outputs.tests }}**"
+            echo "- Full test suite (informational, upstream has known failures): **${{ steps.full.outcome }}**"
+            echo "- APK and reports: $run_url"
+            echo
+            echo "Before merging: install the APK and type a few Vietnamese words (see docs/UPSTREAM_SYNC.md)."
+          } > body.md
+          if ! gh pr create --base main --head "$branch" --title "$title" --body-file body.md; then
+            # Repository setting "Allow GitHub Actions to create pull requests" is off: fall back to an issue.
+            echo >> body.md
+            echo "Open the pull request: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/main...$branch?expand=1" >> body.md
+            gh issue create --title "$title" --body-file body.md
+          fi
+
+      - name: Report merge conflict
+        if: steps.sync.outputs.status == 'conflict'
+        run: |
+          sha="${{ steps.sync.outputs.target_sha }}"
+          title="Upstream sync conflict: HeliBoard $REF (${sha:0:8})"
+          if [ -n "$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[].number')" ]; then
+            echo "Issue already open."
+            exit 0
+          fi
+          {
+            echo "Merging HeliBorg/HeliBoard \`$REF\` (\`$sha\`) into \`main\` conflicts in:"
+            echo
+            for f in ${{ steps.sync.outputs.conflicts }}; do echo "- \`$f\`"; done
+            echo
+            echo "Resolve locally:"
+            echo
+            echo '```'
+            echo "git checkout -b upstream-sync/manual main"
+            echo "scripts/sync-upstream.sh $REF   # stops at the conflicts"
+            echo "# fix the files, keeping the VietTelexHooks calls (docs/UPSTREAM_SYNC.md)"
+            echo "git add -A && git commit --no-edit"
+            echo "./gradlew :viettelex-core:test :app:testRunTestsUnitTest --tests 'helium314.keyboard.viettelex.*' --tests 'helium314.keyboard.latin.VietTelexInputLogicTest'"
+            echo '```'
+          } > body.md
+          gh issue create --title "$title" --body-file body.md
+
+      - name: Fail on conflict or failing Vietnamese tests
+        if: steps.sync.outputs.status == 'conflict' || steps.sync.outputs.tests == 'failed'
+        run: |
+          echo "status=${{ steps.sync.outputs.status }} tests=${{ steps.sync.outputs.tests }}"
+          exit 1
+
+      - name: Archive reports for failed job
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: '*/build/reports'
