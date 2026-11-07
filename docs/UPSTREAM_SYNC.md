@@ -33,7 +33,7 @@ git checkout -b upstream-sync/manual main
 scripts/sync-upstream.sh            # or: scripts/sync-upstream.sh v4.4
 # on conflict: fix the files, keeping the hook calls listed below
 git add -A && git commit --no-edit
-./gradlew :viettelex-core:test :app:testRunTestsUnitTest \
+./gradlew :viettelex-core:test :app:testDebugUnitTest \
     --tests 'helium314.keyboard.viettelex.*' --tests 'helium314.keyboard.latin.VietTelexInputLogicTest'
 ```
 

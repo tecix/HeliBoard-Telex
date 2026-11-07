@@ -77,7 +77,7 @@ jobs:
         id: full
         if: steps.sync.outputs.status == 'merged' && steps.branch.outputs.exists == 'false'
         continue-on-error: true
-        run: ./gradlew --no-daemon :viettelex-core:test testRunTestsUnitTest
+        run: ./gradlew --no-daemon :viettelex-core:test testDebugUnitTest
 
       - name: Build APK
         if: steps.sync.outputs.status == 'merged' && steps.branch.outputs.exists == 'false' && steps.sync.outputs.tests == 'passed'
@@ -135,7 +135,7 @@ jobs:
             echo "scripts/sync-upstream.sh $REF   # stops at the conflicts"
             echo "# fix the files, keeping the VietTelexHooks calls (docs/UPSTREAM_SYNC.md)"
             echo "git add -A && git commit --no-edit"
-            echo "./gradlew :viettelex-core:test :app:testRunTestsUnitTest --tests 'helium314.keyboard.viettelex.*' --tests 'helium314.keyboard.latin.VietTelexInputLogicTest'"
+            echo "./gradlew :viettelex-core:test :app:testDebugUnitTest --tests 'helium314.keyboard.viettelex.*' --tests 'helium314.keyboard.latin.VietTelexInputLogicTest'"
             echo '```'
           } > body.md
           gh issue create --title "$title" --body-file body.md

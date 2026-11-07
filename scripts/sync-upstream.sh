@@ -70,7 +70,7 @@ output status merged
 if [ "${SKIP_TESTS:-0}" = 1 ]; then exit 0; fi
 
 # Engine tests, Vietnamese integration tests and the end-to-end typing tests through InputLogic.
-if ./gradlew --no-daemon :viettelex-core:test :app:testRunTestsUnitTest \
+if ./gradlew --no-daemon :viettelex-core:test :app:testDebugUnitTest \
         --tests 'helium314.keyboard.viettelex.*' \
         --tests 'helium314.keyboard.latin.VietTelexInputLogicTest'; then
     output tests passed
