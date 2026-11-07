@@ -148,4 +148,11 @@ class VietTelexIntegrationTest {
         assertTrue(copy.hasVietTelexCombiner())
         assertEquals("tiengs", copy.vietTelexRawKeystrokes)
     }
+
+    @Test
+    fun testVietnameseDictionaryPresence() {
+        val dict = java.io.File("app/src/main/assets/dicts/main_vi.dict")
+        assertTrue(dict.exists(), "main_vi.dict should exist in assets/dicts")
+        assertTrue(dict.length() > 100_000, "main_vi.dict should be a valid non-empty dictionary file")
+    }
 }
