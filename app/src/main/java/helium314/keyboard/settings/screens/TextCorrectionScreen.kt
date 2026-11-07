@@ -43,6 +43,7 @@ import helium314.keyboard.settings.preferences.SwitchPreferenceWithEmojiDictWarn
 import helium314.keyboard.latin.utils.previewDark
 import androidx.core.content.edit
 import helium314.keyboard.keyboard.internal.PopupKeySpec
+import helium314.keyboard.settings.preferences.ListPreference
 import helium314.keyboard.settings.preferences.SliderPreference
 import helium314.keyboard.settings.preferences.TextInputPreference
 
@@ -79,6 +80,7 @@ fun TextCorrectionScreen(
         R.string.settings_category_suggestions,
         if (suggestionsVisible) Settings.PREF_SHOW_SUGGESTIONS else null,
         if (suggestionsEnabled) Settings.PREF_ALWAYS_SHOW_SUGGESTIONS else null,
+        if (suggestionsEnabled) Settings.PREF_SUGGESTIONS_IN_STRIP else null,
         if (suggestionsEnabled && prefs.getBoolean(Settings.PREF_ALWAYS_SHOW_SUGGESTIONS, Defaults.PREF_ALWAYS_SHOW_SUGGESTIONS))
             Settings.PREF_ALWAYS_SHOW_SUGGESTIONS_EXCEPT_WEB_TEXT else null,
         if (suggestionsEnabled) Settings.PREF_CENTER_SUGGESTION_TEXT_TO_ENTER else null,
@@ -232,6 +234,9 @@ fun createCorrectionSettings(context: Context) = listOf(
         val defaultSpecs = PopupKeySpec.splitKeySpecs(stringResource(R.string.suggested_punctuations))
             ?.joinToString(" ") { if (it.length > 1 && it.startsWith('\\')) it.substring(1) else it }
         TextInputPreference(setting, defaultSpecs ?: "")
+    },
+    Setting(context, Settings.PREF_SUGGESTIONS_IN_STRIP, R.string.suggestions_in_strip) {
+        ListPreference(it, (3..5).map { n -> n.toString() to n }, Defaults.PREF_SUGGESTIONS_IN_STRIP)
     },
     Setting(context, Settings.PREF_CENTER_SUGGESTION_TEXT_TO_ENTER,
         R.string.center_suggestion_text_to_enter, R.string.center_suggestion_text_to_enter_summary

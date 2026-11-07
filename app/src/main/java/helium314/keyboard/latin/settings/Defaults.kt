@@ -70,6 +70,7 @@ object Defaults {
     const val PREF_BACKSPACE_REVERTS_AUTOCORRECT = true
     const val PREF_AUTOCORRECT_CAPITALIZED_SUGGESTION = true
     const val PREF_CENTER_SUGGESTION_TEXT_TO_ENTER = false
+    const val PREF_SUGGESTIONS_IN_STRIP = 3
     const val PREF_SHOW_SUGGESTIONS = true
     const val PREF_ALWAYS_SHOW_SUGGESTIONS = false
     const val PREF_ALWAYS_SHOW_SUGGESTIONS_EXCEPT_WEB_TEXT = true

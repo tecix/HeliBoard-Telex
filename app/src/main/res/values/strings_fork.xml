@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Strings for HeliBoard Telex features that are not Vietnamese-specific; kept out of strings.xml to avoid upstream merge conflicts -->
+<resources>
+    <string name="suggestions_in_strip">Suggestions shown in the bar</string>
+</resources>

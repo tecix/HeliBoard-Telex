@@ -59,7 +59,8 @@ final class SuggestionStripLayoutHelper {
     public final int mPadding;
     public final int mDividerWidth;
     public final int mSuggestionsStripHeight;
-    private final int mSuggestionsCountInStrip;
+    private int mSuggestionsCountInStrip;
+    private final int mThemeSuggestionsCountInStrip;
     public final int mMoreSuggestionsRowHeight;
     private int mMaxMoreSuggestionsRow;
     public final float mMinMoreSuggestionsWidth;
@@ -78,9 +79,10 @@ final class SuggestionStripLayoutHelper {
     private final int mColorAutoCorrect;
     private final int mColorSuggested;
     private final float mAlphaObsoleted;
-    private final float mCenterSuggestionWeight;
-    private final int mCenterPositionInStrip;
-    private final int mTypedWordPositionWhenAutocorrect;
+    private float mCenterSuggestionWeight;
+    private final float mThemeCenterSuggestionWeight;
+    private int mCenterPositionInStrip;
+    private int mTypedWordPositionWhenAutocorrect;
     private final Drawable mMoreSuggestionsHint;
     private static final String MORE_SUGGESTIONS_HINT = "…";
 
@@ -136,6 +138,8 @@ final class SuggestionStripLayoutHelper {
                 R.styleable.SuggestionStripView_minMoreSuggestionsWidth, 1.0f);
         a.recycle();
 
+        mThemeSuggestionsCountInStrip = mSuggestionsCountInStrip;
+        mThemeCenterSuggestionWeight = mCenterSuggestionWeight;
         mMoreSuggestionsHint = getMoreSuggestionsHint(res,
                 res.getDimension(R.dimen.config_more_suggestions_hint_text_size),
                 colorMoreSuggestionsHint);
@@ -148,6 +152,18 @@ final class SuggestionStripLayoutHelper {
                 R.dimen.config_more_suggestions_bottom_gap);
         mMoreSuggestionsRowHeight = res.getDimensionPixelSize(
                 R.dimen.config_more_suggestions_row_height);
+    }
+
+    /** Applies the "suggestions shown in the bar" setting (3 to 5) before each layout. */
+    private void updateSuggestionsCountInStrip() {
+        final SettingsValues settingsValues = Settings.getValues();
+        final int count = settingsValues == null ? mThemeSuggestionsCountInStrip : settingsValues.mSuggestionsInStrip;
+        if (count == mSuggestionsCountInStrip) return;
+        mSuggestionsCountInStrip = count;
+        // keep the center slot proportionally wider than the others, as the theme does for its own count
+        mCenterSuggestionWeight = mThemeCenterSuggestionWeight * mThemeSuggestionsCountInStrip / count;
+        mCenterPositionInStrip = count / 2;
+        mTypedWordPositionWhenAutocorrect = mCenterPositionInStrip - 1;
     }
 
     public int getMaxMoreSuggestionsRow() {
@@ -322,6 +338,7 @@ final class SuggestionStripLayoutHelper {
             return layoutPunctuationsAndReturnStartIndexOfMoreSuggestions(punc, stripView);
         }
 
+        updateSuggestionsCountInStrip();
         final int wordCountToShow = suggestedWords.getWordCountToShow();
         final int startIndexOfMoreSuggestions = setupWordViewsAndReturnStartIndexOfMoreSuggestions(
                 suggestedWords, mSuggestionsCountInStrip);

@@ -80,6 +80,13 @@ constructor together with `mCombiningSpec`), cursor-at-end notification in
 **Settings UI**: `settings/SettingsContainer.kt` (`createVietnameseSettings`),
 `settings/screens/SubtypeScreen.kt` (`VietnameseSubtypeSettings(...)`).
 
+**Suggestions shown in the bar** (fork feature, not Vietnamese-specific; a candidate for its own
+upstream PR): `PREF_SUGGESTIONS_IN_STRIP` in `latin/settings/Settings.java`, `Defaults.kt`,
+`SettingsValues.java` (`mSuggestionsInStrip`, 3–5); the list entry in
+`settings/screens/TextCorrectionScreen.kt`; `updateSuggestionsCountInStrip()` in
+`latin/suggestions/SuggestionStripLayoutHelper.java` (count, center slot and weights become non-final);
+strings in `res/values*/strings_fork.xml`.
+
 **Fork build/branding** (not Vietnamese logic): `settings.gradle` and `app/build.gradle.kts`
 (`:viettelex-core`, arm64 only), `jni/Application.mk`, `res/values/donottranslate.xml` (app name),
 `README.md`, `.github/workflows/build-debug-apk.yml`.
