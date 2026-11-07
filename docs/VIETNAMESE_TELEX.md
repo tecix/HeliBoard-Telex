@@ -4,6 +4,9 @@ Tài liệu này giải thích lớp Tiếng Việt được gắn vào HeliBoar
 cho tới lúc một từ được ghi vào ô nhập, cùng cách giữ bản fork theo kịp HeliBoard gốc.
 Các sơ đồ dùng [Mermaid](https://mermaid.js.org/) — GitHub hiển thị trực tiếp.
 
+Bộ gõ Telex trong `viettelex-core/` và các tùy chọn gõ được chuyển thể từ
+[VietTelex](https://github.com/ptrinh/viettelex) của Phil Trinh (giấy phép MIT, xem `viettelex-core/LICENSE`).
+
 Mục lục:
 1. [Ý tưởng chính](#1-ý-tưởng-chính)
 2. [Ba tầng code](#2-ba-tầng-code)
