@@ -10,6 +10,7 @@ import android.text.SpannableStringBuilder
 import android.text.TextUtils
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import java.util.*
+import helium314.keyboard.viettelex.VietTelexCombiner
 
 /**
  * This class implements the logic chain between receiving events and generating code points.

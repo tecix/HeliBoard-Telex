@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Vietnamese Telex strings, kept out of strings.xml to avoid upstream merge conflicts -->
+<resources>
+    <string name="settings_category_vietnamese_telex">Gõ Tiếng Việt (Telex)</string>
+    <string name="vn_free_marking_title">Bỏ dấu tự do</string>
+    <string name="vn_free_marking_summary">Cho phép gõ phím dấu ở bất kỳ vị trí nào trong âm tiết (vd: thuongw hoặc thuowng)</string>
+    <string name="vn_simple_telex_title">Telex đơn giản</string>
+    <string name="vn_simple_telex_summary">Phím w ở đầu từ giữ nguyên chữ w thay vì chuyển thành ư</string>
+    <string name="vn_contextual_english_title">Quyết định theo ngữ cảnh</string>
+    <string name="vn_contextual_english_summary">Tự động nhận diện ngữ cảnh tiếng Anh để hạn chế bỏ dấu nhầm và khôi phục từ trước đó</string>
+    <string name="vn_auto_fix_adjacent_title">Gợi ý sửa lỗi chạm trượt</string>
+    <string name="vn_auto_fix_adjacent_summary">Đề xuất từ đúng trên thanh gợi ý khi bấm nhầm phím kề cạnh</string>
+    <string name="vn_auto_restore_title">Tự khôi phục từ Tiếng Anh</string>
+    <string name="vn_auto_restore_summary">Tự động trả về chuỗi phím gốc cho từ tiếng Anh hoặc âm tiết không hợp lệ khi kết thúc từ</string>
+    <string name="vn_live_spell_check_title">Kiểm tra chính tả khi gõ</string>
+    <string name="vn_live_spell_check_summary">Ngăn ghép dấu Telex ngay khi đang gõ nếu tạo ra âm tiết tiếng Việt sai chính tả</string>
+    <string name="vn_re_edit_words_title">Sửa dấu từ đã gõ</string>
+    <string name="vn_re_edit_words_summary">Cho phép xóa hoặc chạm lại vào từ đã gõ xong để tiếp tục thêm/sửa dấu</string>
+</resources>

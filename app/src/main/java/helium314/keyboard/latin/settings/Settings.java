@@ -200,15 +200,6 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_SPELLCHECK_SUGGEST = "spellcheck_suggest";
     public static final String PREF_SHOW_ONLY_TOOLBAR_WITH_HARDWARE_KEYBOARD = "only_toolbar_with_hw_keyboard";
 
-    // Vietnamese Telex settings
-    public static final String PREF_VN_FREE_MARKING = "vn_free_marking";
-    public static final String PREF_VN_SIMPLE_TELEX = "vn_simple_telex";
-    public static final String PREF_VN_CONTEXTUAL_ENGLISH = "vn_contextual_english";
-    public static final String PREF_VN_AUTO_FIX_ADJACENT = "vn_auto_fix_adjacent";
-    public static final String PREF_VN_AUTO_RESTORE = "vn_auto_restore";
-    public static final String PREF_VN_LIVE_SPELL_CHECK = "vn_live_spell_check";
-    public static final String PREF_VN_RE_EDIT_WORDS = "vn_re_edit_words";
-
     // Emoji
     public static final String PREF_EMOJI_MAX_SDK = "emoji_max_sdk";
     public static final String PREF_RECENT_EMOJIS = "recent_emojis";

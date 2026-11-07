@@ -117,6 +117,7 @@ android {
 
 dependencies {
     // androidx
+    implementation(project(":viettelex-core")) // Vietnamese Telex engine (pure Kotlin/JVM)
     implementation("androidx.core:core-ktx:1.17.0") // 1.18.0 requires minSdk 23
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.autofill:autofill:1.3.0")

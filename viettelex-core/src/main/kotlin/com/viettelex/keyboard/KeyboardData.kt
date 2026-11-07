@@ -1,6 +1,5 @@
 package com.viettelex.keyboard
 
-import android.content.Context
 import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -8,17 +7,16 @@ import java.nio.ByteOrder
 
 /**
  * Mở file dữ liệu nhị phân đóng gói kèm bàn phím (vnlexicon.bin).
- * Trong app Android gọi [install] từ Context (mở qua AssetManager);
- * trong JVM test mặc định tìm `src/main/assets/<name>`.
+ * Trong app Android gọi [install] với hàm mở asset (qua AssetManager);
+ * trong JVM test mặc định tìm `src/main/assets/<name>` của module app.
  */
 object KeyboardData {
     @Volatile
     var open: (String) -> InputStream? = ::openFromAssetsDir
 
     @JvmStatic
-    fun install(context: Context) {
-        val appAssets = context.applicationContext.assets
-        open = { name -> runCatching { appAssets.open(name) }.getOrNull() }
+    fun install(opener: (String) -> InputStream?) {
+        open = opener
     }
 
     fun buffer(name: String): ByteBuffer {
@@ -37,7 +35,7 @@ object KeyboardData {
     }
 }
 
-internal object Cp {
+object Cp {
     fun count(s: String): Int = s.codePointCount(0, s.length)
     fun dropLast(s: String, n: Int): String {
         if (n <= 0) return s

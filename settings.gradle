@@ -1,3 +1,4 @@
 rootProject.name = "heliboard-telex"
 include ':app'
+include ':viettelex-core'
 include ':tools:make-emoji-keys'

@@ -14,7 +14,7 @@ import helium314.keyboard.settings.screens.createGestureTypingSettings
 import helium314.keyboard.settings.screens.createLayoutSettings
 import helium314.keyboard.settings.screens.createPreferencesSettings
 import helium314.keyboard.settings.screens.createToolbarSettings
-import helium314.keyboard.settings.screens.createVietnameseSettings
+import helium314.keyboard.viettelex.createVietnameseSettings
 
 class SettingsContainer(context: Context) {
     private val list = createSettings(context)

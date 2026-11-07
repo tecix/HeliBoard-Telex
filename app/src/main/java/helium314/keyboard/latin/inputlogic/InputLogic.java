@@ -74,6 +74,7 @@ import helium314.keyboard.latin.utils.StatsUtils;
 import helium314.keyboard.latin.utils.TextAtCursor;
 import helium314.keyboard.latin.utils.TextPlacement;
 import helium314.keyboard.latin.utils.TimestampKt;
+import helium314.keyboard.viettelex.VietTelexHooks;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -167,12 +168,8 @@ public final class InputLogic {
             // The timestamp at which it is captured is not accurate but close enough.
             StatsUtils.onWordCommitUserTyped(mWordComposer.getTypedWord(), mWordComposer.isBatchMode());
         }
-        if ((combiningSpec == null || combiningSpec.isEmpty())
-                && settingsValues != null && "vi".equals(settingsValues.mLocale.getLanguage())) {
-            combiningSpec = "viet_telex";
-        }
-        mWordComposer.restartCombining(combiningSpec);
-        mWordComposer.resetVietTelexContext();
+        mWordComposer.restartCombining(VietTelexHooks.combiningSpecFor(combiningSpec, settingsValues));
+        VietTelexHooks.resetContext(mWordComposer);
         resetComposingState(true /* alsoResetLastComposedWord */);
         mDeleteCount = 0;
         mSpaceState = SpaceState.NONE;
@@ -490,32 +487,12 @@ public final class InputLogic {
             BackgroundGatheringCache.INSTANCE.onEditWord(mWordComposer.getTypedWord());
 
         mConnection.beginBatchEdit();
-        if (mWordComposer.hasVietTelexCombiner()) {
-            if (SpaceState.PHANTOM == mSpaceState && mWordComposer.isComposingWord()
-                    && !event.isFunctionalKeyEvent() && event.getCodePoint() >= 0
-                    && !settingsValues.isWordSeparator(event.getCodePoint())) {
-                if (mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
-                    unlearnWord(mWordComposer.getTypedWord(), settingsValues, DictionaryFacilitator.UnlearnEvent.BACKSPACE);
-                    resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), true);
-                } else {
-                    commitTyped(settingsValues, LastComposedWord.NOT_A_SEPARATOR);
-                }
-            } else if (!mWordComposer.isComposingWord() && settingsValues.mVnReEditWords
-                    && !event.isFunctionalKeyEvent() && event.getCodePoint() > 0 && event.getCodePoint() < 128
-                    && !mConnection.hasSelection()) {
-                final char ch = (char) event.getCodePoint();
-                if (com.viettelex.keyboard.ReEdit.INSTANCE.isTransformKey(ch, false)) {
-                    final CharSequence before = mConnection.getTextBeforeCursor(64, 0);
-                    final CharSequence after = mConnection.getTextAfterCursor(2, 0);
-                    if (before != null && com.viettelex.keyboard.ReEdit.INSTANCE.atWordEnd(after != null ? after.toString() : "")) {
-                        final String trailing = com.viettelex.keyboard.ReEdit.INSTANCE.trailingWord(before.toString());
-                        if (trailing != null && mWordComposer.canSeedVietTelexWord(trailing, ch, settingsValues)) {
-                            mConnection.deleteTextBeforeCursor(trailing.length());
-                            mWordComposer.seedVietTelexWord(trailing, settingsValues);
-                        }
-                    }
-                }
-            }
+        final int vietTelexAction = VietTelexHooks.beforeCodeInput(mWordComposer, mConnection, mSpaceState, settingsValues, event);
+        if (vietTelexAction == VietTelexHooks.ACTION_UNLEARN_AND_RESET) {
+            unlearnWord(mWordComposer.getTypedWord(), settingsValues, DictionaryFacilitator.UnlearnEvent.BACKSPACE);
+            resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), true);
+        } else if (vietTelexAction == VietTelexHooks.ACTION_COMMIT_TYPED) {
+            commitTyped(settingsValues, LastComposedWord.NOT_A_SEPARATOR);
         }
 
         Event processedEvent = mWordComposer.processEvent(event);
@@ -1190,7 +1167,7 @@ public final class InputLogic {
         }
         // isComposingWord() may have changed since we stored wasComposing
         if (mWordComposer.isComposingWord()) {
-            mWordComposer.finishVietTelexBoundary(settingsValues);
+            VietTelexHooks.finishBoundary(mWordComposer);
             if (settingsValues.mAutoCorrectEnabled && ! isInlineEmojiSearchAction()) {
                 final String separator = shouldAvoidSendingCode ? LastComposedWord.NOT_A_SEPARATOR
                         : StringUtils.newSingleCodePointString(codePoint);
@@ -1287,9 +1264,7 @@ public final class InputLogic {
             }
         }
 
-        if (codePoint >= 0 && codePoint <= 0xFFFF) {
-            mWordComposer.noteVietTelexBoundaryCharacter((char) codePoint, settingsValues, mConnection);
-        }
+        VietTelexHooks.noteBoundaryCharacter(mWordComposer, codePoint, mConnection);
 
         inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
     }
@@ -1479,16 +1454,9 @@ public final class InputLogic {
         } else if (inputTransaction.getSettingsValues().needsToLookupSuggestions()
             && inputTransaction.getSettingsValues().mSpacingAndPunctuations.mCurrentLanguageHasSpacesOrWordIterator) {
             restartSuggestionsOnWordTouchedByCursor(inputTransaction.getSettingsValues());
-        } else if (mWordComposer.hasVietTelexCombiner() && inputTransaction.getSettingsValues().mVnReEditWords
-                && !mConnection.hasSelection()) {
-            final CharSequence before = mConnection.getTextBeforeCursor(64, 0);
-            if (before != null) {
-                final String reopened = mWordComposer.reopenVietTelexLastCommit(before.toString(), inputTransaction.getSettingsValues());
-                if (reopened != null) {
-                    mConnection.deleteTextBeforeCursor(reopened.length());
-                    setComposingTextInternal(reopened, 1);
-                }
-            }
+        } else {
+            final String reopened = VietTelexHooks.reopenAfterDelete(mWordComposer, mConnection);
+            if (reopened != null) setComposingTextInternal(reopened, 1);
         }
     }
 
@@ -2173,7 +2141,7 @@ public final class InputLogic {
     private void resetEntireInputState(final int newSelStart, final int newSelEnd,
             final boolean clearSuggestionStrip) {
         final boolean shouldFinishComposition = mWordComposer.isComposingWord();
-        mWordComposer.resetVietTelexContext();
+        VietTelexHooks.resetContext(mWordComposer);
         resetComposingState(true /* alsoResetLastComposedWord */);
         if (clearSuggestionStrip) {
             mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
@@ -2366,7 +2334,7 @@ public final class InputLogic {
      */
     public void commitTyped(SettingsValues settingsValues, String separatorString) {
         if (!mWordComposer.isComposingWord()) return;
-        mWordComposer.finishVietTelexBoundary(settingsValues);
+        VietTelexHooks.finishBoundary(mWordComposer);
         String typedWord = mWordComposer.getTypedWord();
         if (typedWord.length() > 0) {
             boolean isBatchMode = mWordComposer.isBatchMode();
@@ -2392,7 +2360,7 @@ public final class InputLogic {
      * @param separator the separator that's causing the commit to happen.
      */
     private void commitCurrentAutoCorrection(SettingsValues settingsValues, String separator, LatinIME.UIHandler handler) {
-        mWordComposer.finishVietTelexBoundary(settingsValues);
+        VietTelexHooks.finishBoundary(mWordComposer);
         // Complete any pending suggestions query first
         if (handler.hasPendingUpdateSuggestions()) {
             handler.cancelUpdateSuggestionStrip();

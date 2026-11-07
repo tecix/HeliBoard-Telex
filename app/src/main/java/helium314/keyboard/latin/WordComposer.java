@@ -7,10 +7,10 @@
 package helium314.keyboard.latin;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import helium314.keyboard.event.CombinerChain;
 import helium314.keyboard.event.Event;
-import helium314.keyboard.event.VietTelexCombiner;
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode;
 import helium314.keyboard.latin.common.ComposedData;
 import helium314.keyboard.latin.common.CoordinateUtils;
@@ -18,9 +18,8 @@ import helium314.keyboard.latin.common.InputPointers;
 import helium314.keyboard.latin.common.StringUtils;
 import helium314.keyboard.latin.define.DebugFlags;
 import helium314.keyboard.latin.define.DecoderSpecificConstants;
-import helium314.keyboard.latin.settings.Settings;
-import helium314.keyboard.latin.settings.SettingsValues;
 import helium314.keyboard.latin.suggestions.SuggestedWordInfo;
+import helium314.keyboard.viettelex.VietTelexCombiner;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -302,7 +301,7 @@ public final class WordComposer {
         mIsBatchMode = true;
         final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
         if (vt != null) {
-            vt.resumeWord(word, Settings.getValues());
+            vt.resumeWord(word);
             mCombinerChain.refreshStateFeedback();
             refreshTypedWordCache();
             mCursorPositionWithinWord = mCodePointSize;
@@ -330,7 +329,7 @@ public final class WordComposer {
         final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
         if (vt != null) {
             final String word = new String(codePoints, 0, length);
-            vt.resumeWord(word, Settings.getValues());
+            vt.resumeWord(word);
             mCombinerChain.refreshStateFeedback();
             refreshTypedWordCache();
             mCursorPositionWithinWord = mCodePointSize;
@@ -372,65 +371,17 @@ public final class WordComposer {
                 || (mCombinerChain != null && mCombinerChain.getVietTelexCombiner() != null);
     }
 
-    public void finishVietTelexBoundary(final SettingsValues settingsValues) {
-        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
-        if (vt != null && isComposingWord() && !isBatchMode()) {
-            vt.commitBoundary(settingsValues);
-            mCombinerChain.refreshStateFeedback();
-            refreshTypedWordCache();
-            mCursorPositionWithinWord = mCodePointSize;
-            mAutoCorrection = null;
-        }
+    @Nullable
+    public VietTelexCombiner getVietTelexCombiner() {
+        return mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
     }
 
-    public void noteVietTelexBoundaryCharacter(final char ch, final SettingsValues settingsValues,
-            final RichInputConnection connection) {
-        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
-        if (vt != null) {
-            vt.noteBoundaryCharacter(ch, settingsValues, connection);
-        }
-    }
-
-    public void resetVietTelexContext() {
-        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
-        if (vt != null) {
-            vt.resetContext();
-            mCombinerChain.refreshStateFeedback();
-            refreshTypedWordCache();
-        }
-    }
-
-    public boolean canSeedVietTelexWord(final String word, final char ch, final SettingsValues settingsValues) {
-        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
-        return vt != null && vt.canSeedAndTransform(word, ch, settingsValues);
-    }
-
-    public boolean seedVietTelexWord(final String word, final SettingsValues settingsValues) {
-        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
-        if (vt == null) return false;
-        reset();
-        if (!vt.seedForTransform(word, settingsValues)) return false;
+    /** Re-read the Vietnamese combiner state after VietTelexHooks changed it outside processEvent. */
+    public void syncVietTelexState(final boolean cursorToEnd, final boolean resumed) {
         mCombinerChain.refreshStateFeedback();
         refreshTypedWordCache();
-        mCursorPositionWithinWord = mCodePointSize;
-        mIsResumed = true;
-        return true;
-    }
-
-    public String reopenVietTelexLastCommit(final String beforeAfterDelete, final SettingsValues settingsValues) {
-        final VietTelexCombiner vt = mCombinerChain != null ? mCombinerChain.getVietTelexCombiner() : null;
-        if (vt == null || settingsValues == null || !settingsValues.mVnReEditWords) return null;
-        if (!vt.getEngine().getCanReopenLastCommit()) return null;
-        final String reopened = vt.getEngine().reopenLastCommit();
-        if (reopened == null || beforeAfterDelete == null || !beforeAfterDelete.endsWith(reopened)) {
-            vt.getEngine().reset();
-            return null;
-        }
-        mCombinerChain.refreshStateFeedback();
-        refreshTypedWordCache();
-        mCursorPositionWithinWord = mCodePointSize;
-        mIsResumed = true;
-        return reopened;
+        if (cursorToEnd) mCursorPositionWithinWord = mCodePointSize;
+        if (resumed) mIsResumed = true;
     }
 
     /**

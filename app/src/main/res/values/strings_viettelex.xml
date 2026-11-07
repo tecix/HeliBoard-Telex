@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- Vietnamese Telex strings, kept out of strings.xml to avoid upstream merge conflicts -->
+<resources>
+    <string name="settings_category_vietnamese_telex">Vietnamese Telex</string>
+    <string name="vn_free_marking_title">Free tone marking</string>
+    <string name="vn_free_marking_summary">Allow typing diacritic keys anywhere in the syllable (e.g. thuongw or thuowng)</string>
+    <string name="vn_simple_telex_title">Simple Telex</string>
+    <string name="vn_simple_telex_summary">Keep \'w\' at word start as \'w\' instead of converting to \'ư\'</string>
+    <string name="vn_contextual_english_title">Contextual English recognition</string>
+    <string name="vn_contextual_english_summary">Automatically recognize English context to prevent unintended tone marks and restore previous words</string>
+    <string name="vn_auto_fix_adjacent_title">Adjacent key suggestion</string>
+    <string name="vn_auto_fix_adjacent_summary">Suggest correct words on the suggestion bar when adjacent keys are mistyped</string>
+    <string name="vn_auto_restore_title">Auto-restore English words</string>
+    <string name="vn_auto_restore_summary">Automatically revert to original keystrokes for English words or invalid syllables upon word completion</string>
+    <string name="vn_live_spell_check_title">Live spell check</string>
+    <string name="vn_live_spell_check_summary">Prevent Telex accent composition while typing if it produces an invalid Vietnamese syllable</string>
+    <string name="vn_re_edit_words_title">Re-edit typed words</string>
+    <string name="vn_re_edit_words_summary">Allow deleting or tapping into a completed word to adjust or re-apply diacritics</string>
+</resources>

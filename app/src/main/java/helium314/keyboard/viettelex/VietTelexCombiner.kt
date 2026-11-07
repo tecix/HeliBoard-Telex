@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
-package helium314.keyboard.event
+package helium314.keyboard.viettelex
 
 import com.viettelex.keyboard.Cp
 import com.viettelex.keyboard.ReEdit
 import com.viettelex.telexcore.TelexAction
 import com.viettelex.telexcore.TelexEngine
+import helium314.keyboard.event.Combiner
+import helium314.keyboard.event.Event
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.RichInputConnection
 import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.settings.Settings
-import helium314.keyboard.latin.settings.SettingsValues
 import java.util.ArrayList
 
 /**
@@ -23,14 +24,14 @@ class VietTelexCombiner : Combiner {
     private var isResumedLocked = false
     var cursorAtWordEnd = true
 
-    fun syncSettings(sv: SettingsValues? = Settings.getValues()) {
-        if (sv == null) return
-        engine.freeMarking = sv.mVnFreeMarking
-        engine.simpleTelex = sv.mVnSimpleTelex
-        engine.contextualEnglish = sv.mVnContextualEnglish
-        engine.retroactiveEnglish = sv.mVnContextualEnglish
-        engine.liveSpellCheck = sv.mVnLiveSpellCheck
-        engine.eagerEnglishRestore = sv.mVnAutoRestore
+    fun syncSettings(vs: VietTelexSettings.Values? = VietTelexSettings.current) {
+        if (vs == null) return
+        engine.freeMarking = vs.freeMarking
+        engine.simpleTelex = vs.simpleTelex
+        engine.contextualEnglish = vs.contextualEnglish
+        engine.retroactiveEnglish = vs.contextualEnglish
+        engine.liveSpellCheck = vs.liveSpellCheck
+        engine.eagerEnglishRestore = vs.autoRestore
     }
 
     val isEmpty: Boolean
@@ -47,7 +48,8 @@ class VietTelexCombiner : Combiner {
 
     override fun processEvent(previousEvents: ArrayList<Event>?, event: Event): Event {
         val sv = Settings.getValues()
-        syncSettings(sv)
+        val vs = VietTelexSettings.current
+        syncSettings(vs)
 
         if (event.keyCode == KeyCode.DELETE) {
             if (!cursorAtWordEnd) return event
@@ -140,7 +142,7 @@ class VietTelexCombiner : Combiner {
         }
 
         if (!engine.isEmpty) {
-            committedPrefix.append(engine.commitText(sv?.mVnAutoRestore ?: true))
+            committedPrefix.append(engine.commitText(vs?.autoRestore ?: true))
         }
         if (codePoint <= 0xFFFF) {
             engine.noteBoundaryCharacter(codePoint.toChar())
@@ -153,15 +155,16 @@ class VietTelexCombiner : Combiner {
      * Finalize the current composing word at a word boundary (space, punctuation, enter),
      * applying auto-restore and updating cross-word English context and reopen state.
      */
-    fun commitBoundary(sv: SettingsValues? = Settings.getValues()): String {
-        syncSettings(sv)
+    fun commitBoundary(): String {
+        val vs = VietTelexSettings.current
+        syncSettings(vs)
         boundaryCommittedWord?.let { return it }
         pendingSeedWord?.let { w ->
             pendingSeedWord = null
             boundaryCommittedWord = w
             return w
         }
-        val autoRestore = sv?.mVnAutoRestore ?: true
+        val autoRestore = vs?.autoRestore ?: true
         val tail = if (!engine.isEmpty) engine.commitText(autoRestore) else ""
         val result = if (committedPrefix.isEmpty()) tail else committedPrefix.toString() + tail
         committedPrefix.setLength(0)
@@ -174,11 +177,12 @@ class VietTelexCombiner : Combiner {
      * Notify the engine of a boundary character committed after a word, and apply any
      * retroactive cross-word English correction when contextualEnglish + autoRestore are enabled.
      */
-    fun noteBoundaryCharacter(ch: Char, sv: SettingsValues? = Settings.getValues(), connection: RichInputConnection? = null) {
-        syncSettings(sv)
+    fun noteBoundaryCharacter(ch: Char, connection: RichInputConnection? = null) {
+        val vs = VietTelexSettings.current
+        syncSettings(vs)
         engine.noteBoundaryCharacter(ch)
         val retro = engine.pendingRetroCorrection
-        if (retro != null && !retro.flipBack && (sv?.mVnContextualEnglish ?: true) && (sv?.mVnAutoRestore ?: true)
+        if (retro != null && !retro.flipBack && (vs?.contextualEnglish ?: true) && (vs?.autoRestore ?: true)
             && ch != '\n' && connection != null && !connection.hasSelection()
         ) {
             val before = connection.getTextBeforeCursor(retro.expected.length + 4, 0)?.toString()
@@ -193,8 +197,9 @@ class VietTelexCombiner : Combiner {
     /**
      * Resume composition on an already-typed [word] (e.g. when backspacing a boundary or touching a word).
      */
-    fun resumeWord(word: String, sv: SettingsValues? = Settings.getValues()) {
-        syncSettings(sv)
+    fun resumeWord(word: String) {
+        val vs = VietTelexSettings.current
+        syncSettings(vs)
         committedPrefix.setLength(0)
         pendingSeedWord = null
         boundaryCommittedWord = null
@@ -202,7 +207,7 @@ class VietTelexCombiner : Combiner {
         cursorAtWordEnd = true
         if (word.isEmpty()) return
 
-        val reEdit = sv?.mVnReEditWords ?: true
+        val reEdit = vs?.reEditWords ?: true
         if (!reEdit) {
             if (!engine.isEmpty) engine.commitText(false)
             engine.forgetLastCommit()
@@ -224,10 +229,11 @@ class VietTelexCombiner : Combiner {
     /**
      * Test whether [word] at the cursor can be seeded and transformed by [ch] when not currently composing.
      */
-    fun canSeedAndTransform(word: String, ch: Char, sv: SettingsValues? = Settings.getValues()): Boolean {
-        if (!(sv?.mVnReEditWords ?: true)) return false
+    fun canSeedAndTransform(word: String, ch: Char): Boolean {
+        val vs = VietTelexSettings.current
+        if (!(vs?.reEditWords ?: true)) return false
         if (!ReEdit.isTransformKey(ch, false)) return false
-        val trial = createTrialEngine(sv)
+        val trial = createTrialEngine(vs)
         if (!trial.seed(word)) return false
         val action = trial.feed(ch)
         return action is TelexAction.Replace && action.backspaces > 0 && trial.composed != word + ch
@@ -236,8 +242,8 @@ class VietTelexCombiner : Combiner {
     /**
      * Seed [word] into the engine so the immediately following [processEvent] transforms it.
      */
-    fun seedForTransform(word: String, sv: SettingsValues? = Settings.getValues()): Boolean {
-        syncSettings(sv)
+    fun seedForTransform(word: String): Boolean {
+        syncSettings()
         committedPrefix.setLength(0)
         pendingSeedWord = null
         boundaryCommittedWord = null
@@ -279,20 +285,20 @@ class VietTelexCombiner : Combiner {
     }
 
     companion object {
-        fun createTrialEngine(sv: SettingsValues? = Settings.getValues()): TelexEngine =
+        fun createTrialEngine(vs: VietTelexSettings.Values? = VietTelexSettings.current): TelexEngine =
             TelexEngine().apply {
-                if (sv != null) {
-                    freeMarking = sv.mVnFreeMarking
-                    simpleTelex = sv.mVnSimpleTelex
-                    liveSpellCheck = sv.mVnLiveSpellCheck
-                    eagerEnglishRestore = sv.mVnAutoRestore
+                if (vs != null) {
+                    freeMarking = vs.freeMarking
+                    simpleTelex = vs.simpleTelex
+                    liveSpellCheck = vs.liveSpellCheck
+                    eagerEnglishRestore = vs.autoRestore
                     contextualEnglish = false
                 }
             }
 
         @JvmStatic
-        fun composeTrial(raw: String, sv: SettingsValues? = Settings.getValues()): String {
-            val t = createTrialEngine(sv)
+        fun composeTrial(raw: String): String {
+            val t = createTrialEngine()
             for (ch in raw) t.feed(ch)
             return t.composed
         }

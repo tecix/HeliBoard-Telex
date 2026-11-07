@@ -486,7 +486,7 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onCreate() {
-        com.viettelex.keyboard.KeyboardData.install(this);
+        helium314.keyboard.viettelex.VietTelexHooks.onCreate(this);
         mSettings.startListener();
         KeyboardIconsSet.Companion.getInstance().loadIcons(this);
         mRichImm = RichInputMethodManager.getInstance();

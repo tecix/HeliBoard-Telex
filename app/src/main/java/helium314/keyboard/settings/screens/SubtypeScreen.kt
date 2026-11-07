@@ -229,24 +229,7 @@ fun SubtypeScreen(
                         }
                     }
                 }
-                if (currentSubtype.locale.language == "vi") {
-                    HorizontalDivider()
-                    Text(
-                        stringResource(R.string.settings_category_vietnamese_telex),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    listOf(
-                        Settings.PREF_VN_FREE_MARKING,
-                        Settings.PREF_VN_SIMPLE_TELEX,
-                        Settings.PREF_VN_CONTEXTUAL_ENGLISH,
-                        Settings.PREF_VN_AUTO_FIX_ADJACENT,
-                        Settings.PREF_VN_AUTO_RESTORE,
-                        Settings.PREF_VN_LIVE_SPELL_CHECK,
-                        Settings.PREF_VN_RE_EDIT_WORDS,
-                    ).forEach { key ->
-                        SettingsActivity.settingsContainer[key]?.Preference()
-                    }
-                }
+                helium314.keyboard.viettelex.VietnameseSubtypeSettings(currentSubtype.locale)
                 HorizontalDivider()
                 Text(
                     stringResource(R.string.settings_screen_secondary_layouts),

@@ -7,10 +7,7 @@ package helium314.keyboard.latin.suggestions
 
 import android.text.TextUtils
 import com.android.inputmethod.latin.utils.BinaryDictionaryUtils
-import com.viettelex.keyboard.AdjacentKeyFixer
-import com.viettelex.keyboard.VNSuggest
 import helium314.keyboard.compat.CompatBreakIterator
-import helium314.keyboard.event.VietTelexCombiner
 import helium314.keyboard.keyboard.Keyboard
 import helium314.keyboard.keyboard.internal.keyboard_parser.getEmojiDefaultVersion
 import helium314.keyboard.latin.CapsMode
@@ -34,6 +31,7 @@ import helium314.keyboard.latin.utils.BackgroundGatheringCache
 import helium314.keyboard.latin.utils.TextAtCursor
 import helium314.keyboard.latin.utils.WordData
 import helium314.keyboard.latin.utils.useBackgroundGathering
+import helium314.keyboard.viettelex.VietTelexHooks
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
@@ -118,9 +116,7 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         val firstOccurrenceOfTypedWordInSuggestions = SuggestedWordInfo.removeDupsAndTypedWord(capitalizedTypedWord, suggestionsContainer)
         makeFirstTwoSuggestionsNonEmoji(suggestionsContainer)
 
-        if (wordComposer.isComposingWord && (mDictionaryFacilitator.currentLocale.language == "vi" || wordComposer.vietTelexRawKeystrokes != null)) {
-            addVietTelexSuggestions(wordComposer, typedWordString, suggestionsContainer)
-        }
+        VietTelexHooks.addSuggestions(wordComposer, typedWordString, suggestionsContainer, mDictionaryFacilitator.currentLocale)
 
         val (allowsToBeAutoCorrected, hasAutoCorrection) = shouldBeAutoCorrected(
             trailingSingleQuotesCount,
@@ -595,98 +591,4 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
         }
     }
 
-    private fun addVietTelexSuggestions(
-        wordComposer: WordComposer,
-        typedWordString: String,
-        suggestionsContainer: ArrayList<SuggestedWordInfo>
-    ) {
-        val settingsValues = Settings.getValues()
-        val raw = wordComposer.vietTelexRawKeystrokes ?: typedWordString
-        if (raw.isEmpty() || typedWordString.isEmpty()) return
-
-        val pool = VNSuggest.matches(typedWordString, poolLimit = 24, excluding = typedWordString.lowercase())
-        val autoFixAdjacent = settingsValues?.mVnAutoFixAdjacent != false
-        val fix = if (autoFixAdjacent && pool.isEmpty() && raw.length >= 2) {
-            AdjacentKeyFixer.lexiconCorrection(
-                raw,
-                { VietTelexCombiner.composeTrial(it, settingsValues) },
-                false
-            )
-        } else null
-        val slip = if (autoFixAdjacent && fix == null && raw.length >= 2) {
-            AdjacentKeyFixer.lexiconToneSlip(
-                raw,
-                { VietTelexCombiner.composeTrial(it, settingsValues) },
-                false
-            )
-        } else null
-
-        val seen = HashSet<String>(suggestionsContainer.size + 8)
-        seen.add(typedWordString.lowercase())
-        for (existing in suggestionsContainer) {
-            seen.add(existing.word.lowercase())
-        }
-
-        val capitalizeFirst = typedWordString.firstOrNull()?.isUpperCase() == true
-        fun applyCase(word: String): String {
-            if (!capitalizeFirst || word.isEmpty()) return word
-            return word.replaceFirstChar { it.uppercase() }
-        }
-
-        var insertPos = 0
-        if (fix != null) {
-            val formattedFix = applyCase(fix)
-            if (seen.add(formattedFix.lowercase())) {
-                suggestionsContainer.add(
-                    insertPos++,
-                    SuggestedWordInfo(
-                        formattedFix,
-                        "",
-                        SuggestedWordInfo.MAX_SCORE - 1,
-                        SuggestedWordInfo.KIND_CORRECTION,
-                        Dictionary.DICTIONARY_USER_TYPED,
-                        SuggestedWordInfo.NOT_AN_INDEX,
-                        SuggestedWordInfo.NOT_A_CONFIDENCE
-                    )
-                )
-            }
-        }
-
-        var score = SuggestedWordInfo.MAX_SCORE - 10
-        for (candidate in pool.take(5)) {
-            val formatted = applyCase(candidate.word)
-            if (seen.add(formatted.lowercase())) {
-                suggestionsContainer.add(
-                    insertPos++,
-                    SuggestedWordInfo(
-                        formatted,
-                        "",
-                        score--,
-                        SuggestedWordInfo.KIND_CORRECTION,
-                        Dictionary.DICTIONARY_USER_TYPED,
-                        SuggestedWordInfo.NOT_AN_INDEX,
-                        SuggestedWordInfo.NOT_A_CONFIDENCE
-                    )
-                )
-            }
-        }
-
-        if (slip != null) {
-            val formattedSlip = applyCase(slip)
-            if (seen.add(formattedSlip.lowercase())) {
-                suggestionsContainer.add(
-                    insertPos,
-                    SuggestedWordInfo(
-                        formattedSlip,
-                        "",
-                        score,
-                        SuggestedWordInfo.KIND_CORRECTION,
-                        Dictionary.DICTIONARY_USER_TYPED,
-                        SuggestedWordInfo.NOT_AN_INDEX,
-                        SuggestedWordInfo.NOT_A_CONFIDENCE
-                    )
-                )
-            }
-        }
-    }
 }
