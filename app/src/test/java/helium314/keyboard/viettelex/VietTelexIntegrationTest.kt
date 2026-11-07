@@ -150,4 +150,46 @@ class VietTelexIntegrationTest {
         assertTrue(container.any { it.word == "khống chế" }) // other dictionary entries are kept
     }
 
+
+    private fun composeVietnamese(keys: String) = WordComposer().apply {
+        restartCombining("viet_telex")
+        for (ch in keys) applyProcessedEvent(processEvent(Event.createSoftwareKeypressEvent(ch.code, 0, 0, 0, false)))
+    }
+
+    @Test
+    fun capitalizationIsTrackedForComposedVietnameseWords() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        // HeliBoard capitalizes dictionary suggestions (and autocorrections) from these flags
+        composeVietnamese("Vieej").let {
+            assertEquals("Việ", it.typedWord)
+            assertTrue(it.isOrWillBeOnlyFirstCharCapitalized)
+            assertEquals(false, it.isAllUpperCase)
+        }
+        composeVietnamese("VIEEJT").let {
+            assertEquals("VIỆT", it.typedWord)
+            assertTrue(it.isAllUpperCase)
+            assertTrue(it.isMostlyCaps)
+            assertEquals(false, it.isOrWillBeOnlyFirstCharCapitalized)
+        }
+        composeVietnamese("vieejt").let {
+            assertEquals("việt", it.typedWord)
+            assertEquals(false, it.isOrWillBeOnlyFirstCharCapitalized)
+            assertEquals(false, it.isAllUpperCase)
+            assertEquals(false, it.isMostlyCaps)
+        }
+    }
+
+
+    @Test
+    fun vietnameseSuggestionsFollowTypedCase() {
+        VietTelexSettings.current = VietTelexSettings.Values()
+        val vi = Locale.forLanguageTag("vi")
+        for ((keys, expected) in listOf("khoon" to "không", "Khoon" to "Không", "KHOON" to "KHÔNG")) {
+            val wc = composeVietnamese(keys)
+            val container = ArrayList<SuggestedWordInfo>()
+            VietTelexHooks.addSuggestions(wc, wc.typedWord, container, vi)
+            assertEquals(expected, container.first().word, "typed $keys")
+        }
+    }
+
 }

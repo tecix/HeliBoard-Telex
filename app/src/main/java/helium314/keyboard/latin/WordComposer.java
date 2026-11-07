@@ -140,6 +140,7 @@ public final class WordComposer {
         final VietTelexCombiner vt = mCombinerChain.getVietTelexCombiner();
         mVietTelexRawKeystrokes = vt != null ? vt.getRawKeystrokes() : null;
         mCodePointSize = Character.codePointCount(mTypedWordCache, 0, mTypedWordCache.length());
+        if (vt != null) recountCaseFromTypedWord();
         mCursorPositionWithinWord += mCodePointSize - oldSize;
         // should not be necessary after setting mCursorPositionWithinWord at the end of reset, but still better not crash
         if (mCursorPositionWithinWord < 0) mCursorPositionWithinWord = 0;
@@ -227,7 +228,28 @@ public final class WordComposer {
             if (Character.isUpperCase(primaryCode)) mCapsCount++;
             if (Character.isDigit(primaryCode)) mDigitsCount++;
         }
+        if (mCombinerChain.getVietTelexCombiner() != null) recountCaseFromTypedWord();
         mAutoCorrection = null;
+    }
+
+    /**
+     * Vietnamese Telex keys are consumed by the combiner and never reach the per-key counting in
+     * applyProcessedEvent, so derive the case flags from the composed word instead ("Việt", "VIỆT").
+     * HeliBoard capitalizes suggestions and autocorrections from these flags.
+     */
+    private void recountCaseFromTypedWord() {
+        int caps = 0;
+        int digits = 0;
+        for (int i = 0; i < mTypedWordCache.length(); ) {
+            final int cp = Character.codePointAt(mTypedWordCache, i);
+            if (Character.isUpperCase(cp)) caps++;
+            if (Character.isDigit(cp)) digits++;
+            i += Character.charCount(cp);
+        }
+        mCapsCount = caps;
+        mDigitsCount = digits;
+        mIsOnlyFirstCharCapitalized = mCodePointSize > 0 && caps == 1
+                && Character.isUpperCase(Character.codePointAt(mTypedWordCache, 0));
     }
 
     public void setCursorPositionWithinWord(final int posWithinWord) {

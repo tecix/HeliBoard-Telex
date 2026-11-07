@@ -169,10 +169,15 @@ object VietTelexHooks {
             AdjacentKeyFixer.lexiconToneSlip(raw, { VietTelexCombiner.composeTrial(it) }, false)
         } else null
 
+        // follow the case of what is being typed: "Viê" → "Việt", "VIÊ" → "VIỆT"
         val capitalizeFirst = typedWordString.firstOrNull()?.isUpperCase() == true
-        fun applyCase(word: String): String {
-            if (!capitalizeFirst || word.isEmpty()) return word
-            return word.replaceFirstChar { it.uppercase() }
+        val allCaps = typedWordString.codePointCount(0, typedWordString.length) > 1
+            && typedWordString.any { it.isLetter() } && typedWordString.none { it.isLowerCase() }
+        fun applyCase(word: String): String = when {
+            word.isEmpty() -> word
+            allCaps -> word.uppercase(currentLocale)
+            capitalizeFirst -> word.replaceFirstChar { it.uppercase() }
+            else -> word
         }
         fun info(word: String, score: Int) = SuggestedWordInfo(
             word, "", score, SuggestedWordInfo.KIND_CORRECTION, Dictionary.DICTIONARY_USER_TYPED,

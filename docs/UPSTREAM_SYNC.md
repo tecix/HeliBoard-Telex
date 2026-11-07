@@ -62,8 +62,11 @@ change makes a hook stop running even if the engine tests still pass, so check i
 **`latin/WordComposer.java`**: raw keystroke cache (`mVietTelexRawKeystrokes`, copied in the copy
 constructor together with `mCombiningSpec`), cursor-at-end notification in
 `setCursorPositionWithinWord`, Vietnamese branches in `setBatchInputWord` / `setComposingWord`
-(resume the word without replaying it through the combiner), and the accessors
-`getVietTelexRawKeystrokes`, `hasVietTelexCombiner`, `getVietTelexCombiner`, `syncVietTelexState`.
+(resume the word without replaying it through the combiner), the accessors
+`getVietTelexRawKeystrokes`, `hasVietTelexCombiner`, `getVietTelexCombiner`, `syncVietTelexState`, and
+`recountCaseFromTypedWord()` (called from `refreshTypedWordCache` and `applyProcessedEvent`: combiner
+keys never reach the per-key caps/digit counting, so the case flags HeliBoard uses to capitalize
+suggestions and autocorrections are derived from the composed word).
 
 **`latin/suggestions/Suggest.kt`**: `VietTelexHooks.addSuggestions(...)` after
 `makeFirstTwoSuggestionsNonEmoji`.
